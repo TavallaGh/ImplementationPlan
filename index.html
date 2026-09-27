@@ -155,7 +155,7 @@
                     
                     <button id="authBtn" onclick="toggleAuthModal()" class="flex items-center gap-2 bg-slate-900 dark:bg-white hover:opacity-90 text-white dark:text-slate-900 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-                        <span id="authBtnText">ورود مدیر</span>
+                        <span id="authBtnText">ورود ادمین</span>
                     </button>
                 </div>
             </div>
@@ -384,7 +384,7 @@
         </div>
 
         <div id="loginModal" class="modal-box hidden bg-white dark:bg-panelDark rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden transform transition-all">
-            <div class="p-6 text-center"><h3 class="text-xl font-black text-slate-900 dark:text-white">ورود مدیر</h3><p class="text-xs text-slate-500 mt-1">نام کاربری و رمز ثبت‌شده در سیستم را وارد کنید.</p></div>
+            <div class="p-6 text-center"><h3 class="text-xl font-black text-slate-900 dark:text-white">ورود ادمین</h3><p class="text-xs text-slate-500 mt-1">نام کاربری و رمز ثبت‌شده در سیستم را وارد کنید.</p></div>
             <div class="px-6 pb-6 space-y-4">
                 <input type="text" id="loginUser" placeholder="نام کاربری" class="input-modern text-center" dir="ltr">
                 <input type="password" id="loginPass" placeholder="رمز عبور" class="input-modern text-center" dir="ltr">
@@ -609,7 +609,7 @@
         }
 
         function updateAuthUI() {
-            document.getElementById('authBtnText').innerText = isAdmin ? 'خروج مدیر' : 'ورود مدیر';
+            document.getElementById('authBtnText').innerText = isAdmin ? 'خروج ادمین' : 'ورود ادمین';
             document.querySelectorAll('.admin-only').forEach(el => isAdmin ? el.classList.remove('hidden-by-auth') : el.classList.add('hidden-by-auth'));
             if(activeStageId) renderStageDescription(activeStageId);
         }
