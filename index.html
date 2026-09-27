@@ -204,7 +204,6 @@
             </div>
             
             <div class="flex gap-2 w-full md:w-auto shrink-0 pr-2">
-                <button onclick="openBackupModal()" class="admin-only hidden-by-auth text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-2 rounded-xl transition-all" title="خروجی و ورود اطلاعات JSON">خروجی / ورود JSON</button>
                 <button onclick="openManageStagesModal()" class="admin-only hidden-by-auth p-2 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all" title="تنظیمات مراحل">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
                 </button>
@@ -378,14 +377,6 @@
             </div>
         </div>
 
-        <div id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle" class="modal-box hidden bg-white dark:bg-panelDark rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-borderDark">
-            <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 dark:border-borderDark"><h3 id="backupModalTitle" class="text-base font-extrabold">انتقال اطلاعات</h3><button type="button" onclick="closeModals()" aria-label="بستن پنجره" class="text-slate-500 hover:text-primary p-1.5 rounded-lg">✕</button></div>
-            <div class="p-5 space-y-5">
-                <div class="space-y-2"><h4 class="text-sm font-bold">خروجی JSON</h4><p class="text-xs text-slate-500 dark:text-slate-400">مراحل، افراد و تسک‌ها همراه وضعیت و پیش‌نیازها در یک فایل ذخیره می‌شوند.</p><button type="button" onclick="exportAppData()" class="bg-primary hover:bg-primaryHover text-white text-sm font-bold px-4 py-2 rounded-xl">دریافت فایل خروجی</button></div>
-                <div class="border-t border-slate-200 dark:border-borderDark pt-4 space-y-2"><h4 class="text-sm font-bold">ورود JSON</h4><p class="text-xs text-slate-500 dark:text-slate-400">فایل خروجی همین برنامه را انتخاب کنید. ورود، داده‌های فعلی دیتابیس را جایگزین می‌کند.</p><label for="importJsonFile" class="block text-xs font-bold">فایل JSON</label><input id="importJsonFile" type="file" accept=".json,application/json" onchange="handleImportFileSelected(event)" class="input-modern text-xs"><p id="importPreview" class="text-xs text-slate-500 dark:text-slate-400 min-h-5 max-h-40 overflow-y-auto whitespace-pre-line" aria-live="polite">فایلی انتخاب نشده است.</p><button id="importDataBtn" type="button" onclick="beginImport()" disabled class="bg-primary hover:bg-primaryHover disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-xl">ورود اطلاعات</button></div>
-            </div>
-        </div>
-
         <div id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" class="modal-box hidden bg-white dark:bg-panelDark rounded-2xl shadow-2xl w-full max-w-sm p-5 border border-slate-200 dark:border-borderDark">
             <h3 id="confirmTitle" class="text-base font-extrabold mb-2">تأیید حذف</h3>
             <p id="confirmMessage" class="text-sm text-slate-600 dark:text-slate-300 mb-5"></p>
@@ -422,7 +413,6 @@
         let activeStageId = stages[0]?.id || null;
         let isSearchMode = false; let currentSelectedDeps = []; let currentExcludeTaskId = null;
         let pendingDelete = null;
-        let pendingImport = null; let importSelectionSeq = 0;
         let dataReady = false;
         let dbBusy = false;
         let loadSequence = 0;
@@ -663,234 +653,6 @@
                 if (completed === true) closeModals();
                 else returnModal ? openModal(returnModal) : closeModals();
             } finally { button.disabled = false; }
-        }
-
-        function openBackupModal() {
-            if (!isAdmin) return;
-            pendingImport = null; importSelectionSeq++;
-            document.getElementById('importJsonFile').value = '';
-            document.getElementById('importPreview').textContent = 'فایلی انتخاب نشده است.';
-            document.getElementById('importDataBtn').disabled = true;
-            openModal('backupModal');
-        }
-        async function exportAppData() {
-            if (!isAdmin || dbBusy) return;
-            try {
-                if (!await loadAllData()) { showToast('دریافت اطلاعات تازه از دیتابیس ممکن نشد.'); return; }
-                const payload = { format: 'erp-deployment-plan', version: 1, exportedAt: new Date().toISOString(), stages, people, tasks };
-                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'erp-deployment-plan-' + new Date().toISOString().slice(0, 10) + '.json';
-                document.body.appendChild(link); link.click(); link.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                showToast('فایل خروجی آماده شد', 'success');
-            } catch (error) { showToast('ساخت فایل خروجی ممکن نشد'); }
-        }
-        function importText(value, label, required = false, maxLength = 10000) {
-            if (value == null && !required) return '';
-            if (typeof value !== 'string' || value.length > maxLength || (required && !value.trim())) throw new Error(label + ' معتبر نیست.');
-            return value.trim();
-        }
-        function importId(value, label) {
-            if (typeof value !== 'string' && typeof value !== 'number') throw new Error(label + ' معتبر نیست.');
-            const id = String(value).trim();
-            if (!id || id.length > 100) throw new Error(label + ' معتبر نیست.');
-            return id;
-        }
-        function normalizeImportDate(value) {
-            if (value == null || value === '') return '';
-            if (typeof value === 'number') {
-                const date = new Date(value);
-                return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
-            }
-            if (typeof value !== 'string') return null;
-            const normalized = value.replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776))
-                .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632))
-                .replace(/[\u200e\u200f\u061c]/g, '').trim();
-            if (!normalized) return '';
-            const parts = normalized.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s].*)?$/);
-            if (!parts) return null;
-            const year = Number(parts[1]), month = Number(parts[2]), day = Number(parts[3]);
-            if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-            if (year >= 1300 && year <= 1499) {
-                const formatter = new Intl.DateTimeFormat('en-US-u-ca-persian', { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' });
-                const persianParts = date => Object.fromEntries(formatter.formatToParts(date).filter(part => ['year', 'month', 'day'].includes(part.type)).map(part => [part.type, Number(part.value)]));
-                let yearStart = null;
-                for (let marchDay = 19; marchDay <= 23; marchDay++) {
-                    const candidate = new Date(Date.UTC(year + 621, 2, marchDay));
-                    const calendar = persianParts(candidate);
-                    if (calendar.year === year && calendar.month === 1 && calendar.day === 1) { yearStart = candidate; break; }
-                }
-                if (!yearStart) return null;
-                const offset = (month <= 6 ? (month - 1) * 31 : 186 + (month - 7) * 30) + day - 1;
-                const date = new Date(yearStart.getTime() + offset * 86400000);
-                const calendar = persianParts(date);
-                return calendar.year === year && calendar.month === month && calendar.day === day ? date.toISOString().slice(0, 10) : null;
-            }
-            const date = new Date(Date.UTC(year, month - 1, day));
-            return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day ? date.toISOString().slice(0, 10) : null;
-        }
-        function validateImport(payload) {
-            if (!payload || typeof payload !== 'object' || Array.isArray(payload) || payload.format !== 'erp-deployment-plan' || payload.version !== 1) throw new Error('این فایل خروجی معتبر همین برنامه نیست.');
-            if (!Array.isArray(payload.stages) || !Array.isArray(payload.people) || !Array.isArray(payload.tasks) || !payload.stages.length) throw new Error('فهرست مراحل، افراد یا تسک‌ها معتبر نیست.');
-            const isRecord = value => value && typeof value === 'object' && !Array.isArray(value);
-            const report = { skippedStages: 0, skippedPeople: 0, skippedTasks: 0, ignoredFields: 0, issues: [] };
-            const note = (message, skippedType = null) => {
-                if (skippedType) report[skippedType]++;
-                else report.ignoredFields++;
-                if (report.issues.length < 15) report.issues.push(message);
-            };
-            const importedStages = [], stageIds = new Set();
-            payload.stages.forEach((item, index) => {
-                try {
-                    if (!isRecord(item)) throw new Error('رکورد معتبر نیست');
-                    const id = importId(item.id, 'شناسه مرحله');
-                    const name = importText(item.name, 'نام مرحله', true, 80);
-                    if (stageIds.has(id)) throw new Error('شناسه تکراری است');
-                    let description = '';
-                    try { description = importText(item.description, 'توضیح مرحله'); }
-                    catch (error) { note(`مرحله ردیف ${index + 1}: توضیح نامعتبر کنار گذاشته شد.`); }
-                    importedStages.push({ id, name, description, order: Number.isFinite(Number(item.order)) && Number(item.order) > 0 ? Number(item.order) : index + 1 });
-                    stageIds.add(id);
-                } catch (error) { note(`مرحله ردیف ${index + 1}: ${error.message}`, 'skippedStages'); }
-            });
-            if (!importedStages.length) throw new Error('هیچ مرحله معتبری برای ورود وجود ندارد.');
-            importedStages.sort((a, b) => a.order - b.order).forEach((item, index) => { item.order = index + 1; });
-            const importedPeople = [], personIds = new Set();
-            payload.people.forEach((item, index) => {
-                try {
-                    if (!isRecord(item)) throw new Error('رکورد معتبر نیست');
-                    const id = importId(item.id, 'شناسه شخص');
-                    const name = importText(item.name, 'نام شخص', true, 80);
-                    if (personIds.has(id)) throw new Error('شناسه تکراری است');
-                    importedPeople.push({ id, name }); personIds.add(id);
-                } catch (error) { note(`شخص ردیف ${index + 1}: ${error.message}`, 'skippedPeople'); }
-            });
-            const importedTasks = [], taskIds = new Set(), taskRows = new Map();
-            payload.tasks.forEach((item, index) => {
-                try {
-                    if (!isRecord(item)) throw new Error('رکورد معتبر نیست');
-                    const id = importId(item.id, 'شناسه تسک');
-                    const title = importText(item.title, 'عنوان تسک', true, 200);
-                    const stageId = importId(item.stageId, 'مرحله تسک');
-                    if (taskIds.has(id)) throw new Error('شناسه تکراری است');
-                    if (!stageIds.has(stageId)) throw new Error('مرحله آن در فایل معتبر نیست');
-                    let desc = '';
-                    try { desc = importText(item.desc, 'توضیح تسک'); }
-                    catch (error) { note(`تسک ردیف ${index + 1}: توضیح نامعتبر کنار گذاشته شد.`); }
-                    const deadline = normalizeImportDate(item.deadline);
-                    if (deadline === null) note(`تسک ردیف ${index + 1}: تاریخ مهلت قابل تشخیص نبود و خالی وارد می‌شود.`);
-                    const personRef = (value, label) => {
-                        if (value == null || value === '') return '';
-                        try {
-                            const personId = importId(value, label);
-                            if (personIds.has(personId)) return personId;
-                        } catch (error) { /* The reference is handled below. */ }
-                        note(`تسک ردیف ${index + 1}: ${label} نامعتبر کنار گذاشته شد.`);
-                        return '';
-                    };
-                    const priority = ['پایین', 'متوسط', 'بالا'].includes(item.priority) ? item.priority : 'متوسط';
-                    const status = ['انجام نشده', 'در حال انجام', 'انجام شده'].includes(item.status) ? item.status : 'انجام نشده';
-                    if (item.priority != null && item.priority !== priority) note(`تسک ردیف ${index + 1}: اولویت نامعتبر با مقدار پیش‌فرض جایگزین شد.`);
-                    if (item.status != null && item.status !== status) note(`تسک ردیف ${index + 1}: وضعیت نامعتبر با مقدار پیش‌فرض جایگزین شد.`);
-                    const sourceDeps = item.dependencies ?? item.deps ?? [];
-                    if (!Array.isArray(sourceDeps)) note(`تسک ردیف ${index + 1}: فهرست پیش‌نیاز نامعتبر کنار گذاشته شد.`);
-                    const dependencies = [];
-                    (Array.isArray(sourceDeps) ? sourceDeps : []).forEach(value => {
-                        try { dependencies.push(importId(value, 'شناسه پیش‌نیاز')); }
-                        catch (error) { note(`تسک ردیف ${index + 1}: یک پیش‌نیاز نامعتبر کنار گذاشته شد.`); }
-                    });
-                    importedTasks.push({ id, title, desc, stageId, priority, status,
-                        assigneeId: personRef(item.assigneeId, 'مسئول'), reviewerId: personRef(item.reviewerId, 'ناظر'), receiverId: personRef(item.receiverId, 'تحویل‌گیرنده'),
-                        deadline: deadline ?? '', order: Number.isFinite(Number(item.order)) && Number(item.order) > 0 ? Number(item.order) : index + 1,
-                        dependencies });
-                    taskIds.add(id); taskRows.set(id, index + 1);
-                } catch (error) { note(`تسک ردیف ${index + 1}: ${error.message}`, 'skippedTasks'); }
-            });
-            const acceptedDeps = new Map(importedTasks.map(task => [task.id, []]));
-            function hasPath(from, target) {
-                const queue = [from], visited = new Set();
-                while (queue.length) {
-                    const id = queue.pop();
-                    if (id === target) return true;
-                    if (visited.has(id)) continue;
-                    visited.add(id); queue.push(...acceptedDeps.get(id));
-                }
-                return false;
-            }
-            importedTasks.forEach(task => {
-                const valid = acceptedDeps.get(task.id);
-                task.dependencies.forEach(id => {
-                    if (!taskIds.has(id) || id === task.id || valid.includes(id) || hasPath(id, task.id)) note(`تسک ردیف ${taskRows.get(task.id)}: یک پیش‌نیاز نامعتبر یا چرخه‌ای کنار گذاشته شد.`);
-                    else valid.push(id);
-                });
-                task.dependencies = valid;
-            });
-            return { stages: importedStages, people: importedPeople, tasks: importedTasks, report };
-        }
-        function importIssueCount(data) {
-            const report = data.report;
-            return report.skippedStages + report.skippedPeople + report.skippedTasks + report.ignoredFields;
-        }
-        function formatImportSummary(data) {
-            const report = data.report;
-            const lines = [`آماده ورود: ${data.stages.length} مرحله، ${data.people.length} شخص و ${data.tasks.length} تسک.`];
-            if (importIssueCount(data)) {
-                lines.push(`کنار گذاشته‌شده: ${report.skippedStages} مرحله، ${report.skippedPeople} شخص، ${report.skippedTasks} تسک و ${report.ignoredFields} مقدار نامعتبر.`);
-                lines.push(...report.issues);
-                if (importIssueCount(data) > report.issues.length) lines.push(`و ${importIssueCount(data) - report.issues.length} مورد دیگر...`);
-            }
-            return lines.join('\n');
-        }
-        async function handleImportFileSelected(event) {
-            const sequence = ++importSelectionSeq;
-            pendingImport = null;
-            document.getElementById('importDataBtn').disabled = true;
-            const preview = document.getElementById('importPreview');
-            const file = event.target.files?.[0];
-            if (!file) { preview.textContent = 'فایلی انتخاب نشده است.'; return; }
-            if (file.size > 10 * 1024 * 1024) { preview.textContent = 'حجم فایل از ۱۰ مگابایت بیشتر است.'; return; }
-            preview.textContent = 'در حال بررسی فایل...';
-            try {
-                const data = validateImport(JSON.parse(await file.text()));
-                if (sequence !== importSelectionSeq) return;
-                pendingImport = data;
-                preview.textContent = formatImportSummary(data);
-                document.getElementById('importDataBtn').disabled = false;
-            } catch (error) { if (sequence === importSelectionSeq) preview.textContent = 'ورود ممکن نیست: ' + (error instanceof SyntaxError ? 'ساختار JSON نامعتبر است.' : error.message); }
-        }
-        function beginImport() {
-            if (!isAdmin || !pendingImport) return;
-            const data = pendingImport;
-            const hasSavedData = stages.length || people.length || tasks.length;
-            if (hasSavedData || importIssueCount(data)) askConfirm('داده‌های معتبر فایل وارد می‌شوند و موارد نامعتبر کنار گذاشته می‌شوند. اطلاعات فعلی دیتابیس جایگزین خواهد شد. ادامه می‌دهید؟', 'backupModal', () => applyImportedData(data), 'جایگزینی اطلاعات', 'جایگزینی');
-            else applyImportedData(data);
-        }
-        async function applyImportedData(data) {
-            if (!isAdmin || !dataReady) return false;
-            const oldStages = stages.map(item => item.id), oldPeople = people.map(item => item.id), oldTasks = tasks.map(item => item.id);
-            const importedStageIds = new Set(data.stages.map(item => item.id));
-            const importedPersonIds = new Set(data.people.map(item => item.id));
-            const importedTaskIds = new Set(data.tasks.map(item => item.id));
-            const completed = await runDbAction(async () => {
-                await dbUpsert(DB_TABLES.stages, data.stages.map(stageToRow));
-                await dbUpsert(DB_TABLES.people, data.people.map(personToRow));
-                await dbUpsert(DB_TABLES.tasks, data.tasks.map(taskToRow));
-                await dbRequest(DB_TABLES.dependencies, { method: 'DELETE', query: 'task_id=not.is.null' });
-                await dbUpsert(DB_TABLES.dependencies, data.tasks.flatMap(task => task.dependencies.map(depId => ({ task_id: task.id, depends_on_task_id: depId }))));
-                for (const id of oldTasks) if (!importedTaskIds.has(id)) await dbWrite(DB_TABLES.tasks, 'DELETE', dbFilter('id', id));
-                for (const id of oldPeople) if (!importedPersonIds.has(id)) await dbWrite(DB_TABLES.people, 'DELETE', dbFilter('id', id));
-                for (const id of oldStages) if (!importedStageIds.has(id)) await dbWrite(DB_TABLES.stages, 'DELETE', dbFilter('id', id));
-            }, importIssueCount(data) ? 'داده‌های معتبر وارد شد؛ موارد نامعتبر کنار گذاشته شد.' : 'اطلاعات فایل وارد شد');
-            if (completed) {
-                activeStageId = data.stages[0].id; isSearchMode = false; pendingImport = null;
-                document.getElementById('globalSearchInput').value = '';
-                if (dataReady) { renderStagesTabs(); renderStageDescription(activeStageId); refreshCurrentView(); }
-                closeModals();
-            }
-            return completed;
         }
 
         function openPeopleModal() {
