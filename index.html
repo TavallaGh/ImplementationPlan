@@ -407,19 +407,11 @@
 
     <!-- Minimal JS port of original logic to support the redesigned DOM -->
     <script>
-        // Supabase connection for this standalone deployment plan.
-        // Fill these only after the SQL schema and RLS policies have been applied.
-        // Use the project's publishable key; never put a secret/service_role key here.
-        const ERP_SUPABASE_SETTINGS = Object.freeze({
-            projectUrl: 'https://ivaqqnfdxezvwngkdubt.supabase.co',
-            publishableKey: 'sb_publishable_H2SwQP20rboF6yn_8XwThw_q61alQzP'
-        });
-
         const DB_TABLES = Object.freeze({ stages: 'erp_deployment_stages', people: 'erp_deployment_people', tasks: 'erp_deployment_tasks', dependencies: 'erp_deployment_dependencies' });
         let stages = [];
         let people = [];
         let tasks = [];
-        let isAdmin = localStorage.getItem('erp_isAdmin') === 'true';
+        let isAdmin = false;
         let activeStageId = stages[0]?.id || null;
         let isSearchMode = false; let currentSelectedDeps = []; let currentExcludeTaskId = null;
         let pendingDelete = null;
@@ -433,18 +425,13 @@
         }
         function makeId() { return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9); }
 
-        function dbConfigured() {
-            return /^https:\/\/[^/]+$/.test(ERP_SUPABASE_SETTINGS.projectUrl.replace(/\/$/, '')) && !!ERP_SUPABASE_SETTINGS.publishableKey;
-        }
         async function dbRequest(table, { method = 'GET', query = '', body, headers = {} } = {}) {
-            if (!dbConfigured()) throw new Error('نشانی پروژه و کلید عمومی Supabase در تنظیمات فایل وارد نشده است.');
-            const url = ERP_SUPABASE_SETTINGS.projectUrl.replace(/\/$/, '') + '/rest/v1/' + table + (query ? '?' + query : '');
-            const requestHeaders = { apikey: ERP_SUPABASE_SETTINGS.publishableKey, Accept: 'application/json', ...headers };
-            if (ERP_SUPABASE_SETTINGS.publishableKey.startsWith('eyJ')) requestHeaders.Authorization = 'Bearer ' + ERP_SUPABASE_SETTINGS.publishableKey;
+            const url = '/api/db/' + table + (query ? '?' + query : '');
+            const requestHeaders = { Accept: 'application/json', ...headers };
             if (body !== undefined) requestHeaders['Content-Type'] = 'application/json';
             let response;
             try { response = await fetch(url, { method, headers: requestHeaders, cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) }); }
-            catch (error) { throw new Error('ارتباط با Supabase برقرار نشد. اتصال اینترنت و نشانی پروژه را بررسی کنید.'); }
+            catch (error) { throw new Error('ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.'); }
             const raw = await response.text();
             let result;
             try { result = raw ? JSON.parse(raw) : null; } catch (error) { result = null; }
@@ -545,9 +532,14 @@
             } finally { dbBusy = false; }
         }
 
-        function init() {
+        async function init() {
             document.body.appendChild(document.getElementById('depDropdown'));
-            initTheme(); updateAuthUI(); loadAllData();
+            initTheme();
+            try {
+                const response = await fetch('/api/auth/session', { cache: 'no-store' });
+                if (response.ok) isAdmin = (await response.json()).isAdmin === true;
+            } catch (error) { /* The database status below reports server availability. */ }
+            updateAuthUI(); loadAllData();
             document.addEventListener('click', e => {
                 if (!e.target.closest('.relative.group')) document.getElementById('searchOptionsPopover').classList.add('hidden');
                 if (!document.getElementById('depTrigger').contains(e.target) && !document.getElementById('depDropdown').contains(e.target)) closeDepDropdown();
@@ -581,15 +573,24 @@
             setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
         }
 
-        function toggleAuthModal() {
-            if (isAdmin) { isAdmin = false; localStorage.setItem('erp_isAdmin', 'false'); updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خروج موفق', 'success'); } 
+        async function toggleAuthModal() {
+            if (isAdmin) {
+                try {
+                    const response = await fetch('/api/auth/logout', { method: 'POST' });
+                    if (!response.ok) throw new Error();
+                    isAdmin = false; updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خروج موفق', 'success');
+                } catch (error) { showToast('خروج انجام نشد. دوباره تلاش کنید.'); }
+            }
             else { document.getElementById('loginError').classList.add('hidden'); document.getElementById('loginUser').value=''; document.getElementById('loginPass').value=''; openModal('loginModal'); }
         }
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault(); const u = document.getElementById('loginUser').value; const p = document.getElementById('loginPass').value;
-            if (u === 'admin' && p === 'Admin123?') { // Simplified for demo
-                isAdmin = true; localStorage.setItem('erp_isAdmin', 'true'); closeModals(); updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خوش آمدید', 'success');
-            } else document.getElementById('loginError').classList.remove('hidden');
+            try {
+                const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+                if (!response.ok) throw new Error();
+                document.getElementById('loginPass').value = '';
+                isAdmin = true; closeModals(); updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خوش آمدید', 'success');
+            } catch (error) { document.getElementById('loginError').classList.remove('hidden'); }
         }
 
         function updateAuthUI() {
