@@ -8,7 +8,6 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         if (typeof tailwind !== 'undefined') {
             tailwind.config = {
@@ -394,11 +393,11 @@
         </div>
 
         <div id="loginModal" class="modal-box hidden bg-white dark:bg-panelDark rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden transform transition-all">
-            <div class="p-6 text-center"><h3 class="text-xl font-black text-slate-900 dark:text-white">ورود مدیر</h3><p class="text-xs text-slate-500 mt-1">جهت دسترسی به ویرایش اطلاعات</p></div>
+            <div class="p-6 text-center"><h3 class="text-xl font-black text-slate-900 dark:text-white">ورود مدیر</h3><p class="text-xs text-slate-500 mt-1">نام کاربری و رمز ثبت‌شده در سیستم را وارد کنید.</p></div>
             <div class="px-6 pb-6 space-y-4">
-                <input type="email" id="loginUser" placeholder="ایمیل مدیر در Supabase" class="input-modern text-center" dir="ltr">
+                <input type="text" id="loginUser" placeholder="نام کاربری" class="input-modern text-center" dir="ltr">
                 <input type="password" id="loginPass" placeholder="رمز عبور" class="input-modern text-center" dir="ltr">
-                <div id="loginError" class="text-danger text-xs font-bold text-center hidden">اطلاعات نادرست است</div>
+                <div id="loginError" class="text-danger text-xs font-bold text-center hidden" role="alert"></div>
                 <button onclick="handleLogin(event)" class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm shadow-md shadow-primary/20 active:scale-95 transition-transform">ورود</button>
                 <button onclick="closeModals()" class="w-full text-slate-500 text-xs font-bold py-2">انصراف</button>
             </div>
@@ -414,12 +413,12 @@
             projectUrl: 'https://ivaqqnfdxezvwngkdubt.supabase.co',
             publishableKey: 'sb_publishable_H2SwQP20rboF6yn_8XwThw_q61alQzP'
         });
-        const authClient = window.supabase.createClient(ERP_SUPABASE_SETTINGS.projectUrl, ERP_SUPABASE_SETTINGS.publishableKey);
         const DB_TABLES = Object.freeze({ stages: 'erp_deployment_stages', people: 'erp_deployment_people', tasks: 'erp_deployment_tasks', dependencies: 'erp_deployment_dependencies' });
         let stages = [];
         let people = [];
         let tasks = [];
         let isAdmin = false;
+        let adminSessionToken = sessionStorage.getItem('erp_admin_session') || '';
         let activeStageId = stages[0]?.id || null;
         let isSearchMode = false; let currentSelectedDeps = []; let currentExcludeTaskId = null;
         let pendingDelete = null;
@@ -436,8 +435,7 @@
         async function dbRequest(table, { method = 'GET', query = '', body, headers = {} } = {}) {
             const url = ERP_SUPABASE_SETTINGS.projectUrl + '/rest/v1/' + table + (query ? '?' + query : '');
             const requestHeaders = { apikey: ERP_SUPABASE_SETTINGS.publishableKey, Accept: 'application/json', ...headers };
-            const { data: { session } } = await authClient.auth.getSession();
-            if (session?.access_token) requestHeaders.Authorization = 'Bearer ' + session.access_token;
+            if (adminSessionToken) requestHeaders['x-client-info'] = 'erp:' + adminSessionToken;
             if (body !== undefined) requestHeaders['Content-Type'] = 'application/json';
             let response;
             try { response = await fetch(url, { method, headers: requestHeaders, cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) }); }
@@ -447,6 +445,16 @@
             try { result = raw ? JSON.parse(raw) : null; } catch (error) { result = null; }
             if (!response.ok) throw new Error((result && (result.message || result.hint)) || `خطای دیتابیس (${response.status})`);
             return result;
+        }
+        async function authRequest(name, body = {}) {
+            const headers = { apikey: ERP_SUPABASE_SETTINGS.publishableKey, 'Content-Type': 'application/json' };
+            if (adminSessionToken) headers['x-client-info'] = 'erp:' + adminSessionToken;
+            const response = await fetch(ERP_SUPABASE_SETTINGS.projectUrl + '/rest/v1/rpc/' + name, {
+                method: 'POST', headers, cache: 'no-store', body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error('درخواست ورود به دیتابیس انجام نشد.');
+            const raw = await response.text();
+            return raw ? JSON.parse(raw) : null;
         }
         async function dbRows(table, order) {
             const rows = [];
@@ -546,9 +554,9 @@
             document.body.appendChild(document.getElementById('depDropdown'));
             initTheme();
             try {
-                const { data: { user }, error } = await authClient.auth.getUser();
-                isAdmin = !error && user?.app_metadata?.role === 'erp_admin';
-            } catch (error) { isAdmin = false; }
+                isAdmin = !!adminSessionToken && await authRequest('erp_session') === true;
+                if (!isAdmin) { adminSessionToken = ''; sessionStorage.removeItem('erp_admin_session'); }
+            } catch (error) { isAdmin = false; adminSessionToken = ''; sessionStorage.removeItem('erp_admin_session'); }
             updateAuthUI(); loadAllData();
             document.addEventListener('click', e => {
                 if (!e.target.closest('.relative.group')) document.getElementById('searchOptionsPopover').classList.add('hidden');
@@ -586,25 +594,28 @@
         async function toggleAuthModal() {
             if (isAdmin) {
                 try {
-                    const { error } = await authClient.auth.signOut();
-                    if (error) throw error;
-                    isAdmin = false; updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خروج موفق', 'success');
+                    await authRequest('erp_logout');
                 } catch (error) { showToast('خروج انجام نشد. دوباره تلاش کنید.'); }
+                adminSessionToken = ''; sessionStorage.removeItem('erp_admin_session');
+                isAdmin = false; updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خروج موفق', 'success');
             }
             else { document.getElementById('loginError').classList.add('hidden'); document.getElementById('loginUser').value=''; document.getElementById('loginPass').value=''; openModal('loginModal'); }
         }
         async function handleLogin(e) {
-            e.preventDefault(); const u = document.getElementById('loginUser').value; const p = document.getElementById('loginPass').value;
+            e.preventDefault(); const u = document.getElementById('loginUser').value.trim(); const p = document.getElementById('loginPass').value;
+            const loginError = document.getElementById('loginError');
             try {
-                const { data, error } = await authClient.auth.signInWithPassword({ email: u, password: p });
-                if (error) throw error;
-                if (data.user?.app_metadata?.role !== 'erp_admin') {
-                    await authClient.auth.signOut();
-                    throw new Error('Admin role required');
-                }
+                const token = await authRequest('erp_login', { p_username: u, p_password: p });
+                if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) throw new Error('Invalid credentials');
+                adminSessionToken = token; sessionStorage.setItem('erp_admin_session', token);
                 document.getElementById('loginPass').value = '';
                 isAdmin = true; closeModals(); updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خوش آمدید', 'success');
-            } catch (error) { document.getElementById('loginError').classList.remove('hidden'); }
+            } catch (error) {
+                loginError.textContent = error.message === 'Invalid credentials'
+                    ? 'نام کاربری یا رمز نادرست است.'
+                    : 'ارتباط با سیستم ورود برقرار نشد. تنظیمات دیتابیس را بررسی کنید.';
+                loginError.classList.remove('hidden');
+            }
         }
 
         function updateAuthUI() {
