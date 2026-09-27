@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت پلن استقرار ERP</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        fontFamily: { sans: ['Vazirmatn', 'sans-serif'] },
+                        colors: {
+                            primary: '#6366f1', // Indigo 500 - Moderner shade
+                            primaryHover: '#4f46e5',
+                            surface: '#ffffff',
+                            surfaceDark: '#0f172a',
+                            panelDark: '#1e293b',
+                            borderDark: '#334155',
+                            danger: '#f43f5e', // Rose 500
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                        },
+                        boxShadow: {
+                            'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                            'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
+        
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background-color: #475569; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .modal-backdrop { backdrop-filter: blur(6px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .admin-only.hidden-by-auth { display: none !important; }
+        
+        .status-badge { transition: all 0.2s ease; }
+        .action-btns { transition: all 0.2s ease; }
+        
+        /* Modal inputs: these styles must work in the standalone browser file. */
+        .input-modern {
+            display: block;
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #fff;
+            color: #0f172a;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s, background-color .2s;
+        }
+        .input-modern:hover { border-color: #94a3b8; }
+        .input-modern:focus-visible { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, .16); }
+        .input-modern::placeholder { color: #94a3b8; }
+        .input-modern:disabled { opacity: .55; cursor: not-allowed; }
+        .dark .input-modern { border-color: #475569; background: #0f172a; color: #f1f5f9; color-scheme: dark; }
+        .dark .input-modern:hover { border-color: #64748b; }
+        .dark .input-modern:focus-visible { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, .2); }
+        #taskModal .input-modern, #depDropdown .input-modern { min-height: 38px; padding: 7px 10px; border-radius: 9px; font-size: 13px; }
+        #taskModal #taskDesc { min-height: 66px; resize: vertical; }
+        #depAdminView > .input-modern { display: flex; }
+        #depDropdown { position: fixed; z-index: 100; }
+        #taskModal label { cursor: pointer; margin-bottom: 4px; }
+        #taskModal .task-section { border: 1px solid #e2e8f0; background: #fff; border-radius: 14px; padding: 14px 16px; }
+        .dark #taskModal .task-section { border-color: #334155; background: #1e293b; }
+        @media (max-width: 640px) { #taskModal .task-section { padding: 12px; } }
+
+        @keyframes slideInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast-enter { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 dark:bg-surfaceDark dark:text-slate-200 antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="glass-panel sticky top-0 z-40 shadow-sm">
+        <div class="max-w-[96%] mx-auto px-4">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Brand -->
+                <div class="flex items-center gap-4 shrink-0">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primaryHover text-white flex items-center justify-center shadow-lg shadow-primary/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+                    </div>
+                    <div class="hidden sm:flex flex-col">
+                        <span class="font-black text-base tracking-tight text-slate-900 dark:text-white">Workspace <span class="text-primary">ERP</span></span>
+                        <span class="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">Deployment Center</span>
+                    </div>
+                </div>
+
+                <!-- Global Search -->
+                <div class="flex-grow max-w-2xl mx-8 relative group">
+                    <div class="relative flex items-center w-full h-11 rounded-2xl border border-slate-200 dark:border-borderDark bg-slate-100/50 dark:bg-slate-800/50 focus-within:bg-white dark:focus-within:bg-panelDark focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                        <div class="pl-3 pr-4 text-slate-400"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
+                        <input type="text" id="globalSearchInput" oninput="handleSearch()" placeholder="جستجو در تسک‌ها، افراد و وضعیت‌ها..." class="w-full h-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 font-medium">
+                        <button onclick="toggleSearchOptions()" class="h-full px-4 text-slate-400 hover:text-primary transition-colors border-r border-slate-200 dark:border-borderDark">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- Search Filter Dropdown -->
+                    <div id="searchOptionsPopover" class="hidden absolute top-14 left-0 w-64 bg-white dark:bg-panelDark rounded-2xl shadow-glass border border-slate-100 dark:border-borderDark p-5 z-50">
+                        <h4 class="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-widest">فیلترهای هوشمند</h4>
+                        <div class="space-y-3 text-sm font-medium">
+                            <label class="flex items-center gap-3 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-primary transition-colors">
+                                <input type="checkbox" id="searchOptTitle" checked onchange="handleSearch()" class="rounded text-primary focus:ring-0 w-4 h-4"> عنوان و توضیحات
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-primary transition-colors">
+                                <input type="checkbox" id="searchOptAssignee" onchange="handleSearch()" class="rounded text-primary focus:ring-0 w-4 h-4"> منابع (اشخاص)
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-primary transition-colors">
+                                <input type="checkbox" id="searchOptStatus" onchange="handleSearch()" class="rounded text-primary focus:ring-0 w-4 h-4"> وضعیت‌ها
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-3 shrink-0">
+                    <button onclick="openPeopleModal()" class="admin-only hidden-by-auth text-slate-500 hover:text-primary hover:bg-indigo-50 dark:hover:bg-slate-800 p-2.5 rounded-xl transition-all" title="مدیریت تیم">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </button>
+                    
+                    <button id="themeToggleBtn" class="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                        <svg id="icon-sun" class="w-5 h-5 hidden dark:block text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+                    
+                    <button id="authBtn" onclick="toggleAuthModal()" class="flex items-center gap-2 bg-slate-900 dark:bg-white hover:opacity-90 text-white dark:text-slate-900 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                        <span id="authBtnText">ورود مدیر</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow w-full max-w-[96%] mx-auto py-8">
+        <!-- Dashboard Metrics -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Overall Progress -->
+            <div class="lg:col-span-1 bg-white dark:bg-panelDark p-6 rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark flex flex-col justify-center relative overflow-hidden group">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <h2 class="text-sm font-bold text-slate-500 dark:text-slate-400">پیشرفت کل پروژه</h2>
+                    <span id="overallTaskCountText" class="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-lg">0 / 0</span>
+                </div>
+                <div class="relative z-10">
+                    <div class="flex items-baseline gap-2 mb-3">
+                        <span id="overallProgressText" class="text-5xl font-black text-slate-900 dark:text-white tracking-tight">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                        <div id="overallProgressBar" class="bg-gradient-to-r from-primary to-primaryHover h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stage Detail -->
+            <div id="stageDescriptionContainer" class="lg:col-span-3 bg-white dark:bg-panelDark p-6 rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-4">
+                        <h3 id="currentStageTitleDisplay" class="text-lg font-black text-slate-900 dark:text-white">نام مرحله</h3>
+                        <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <div class="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5"><div id="stageProgressBar" class="bg-success h-full rounded-full transition-all duration-700" style="width: 0%"></div></div>
+                            <span id="stageProgressText" class="text-[11px] font-bold text-slate-600 dark:text-slate-300">0%</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="stageDescriptionText" class="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium overflow-y-auto max-h-[80px] pr-2"></div>
+            </div>
+        </div>
+
+        <!-- Toolbar (Tabs & Actions) -->
+        <div id="tabsSection" class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-white dark:bg-panelDark p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-borderDark">
+            <div id="stagesTabsContainer" class="flex space-x-1 space-x-reverse overflow-x-auto w-full md:w-auto p-1 hide-scrollbar">
+                <!-- Injected via JS -->
+            </div>
+            
+            <div class="flex gap-2 w-full md:w-auto shrink-0 pr-2">
+                <button onclick="openBackupModal()" class="admin-only hidden-by-auth text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-2 rounded-xl transition-all" title="خروجی و ورود اطلاعات JSON">خروجی / ورود JSON</button>
+                <button onclick="openManageStagesModal()" class="admin-only hidden-by-auth p-2 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all" title="تنظیمات مراحل">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                </button>
+                <button onclick="openTaskModal()" class="admin-only hidden-by-auth text-sm font-bold bg-primary hover:bg-primaryHover text-white px-6 py-2 rounded-xl shadow-md shadow-primary/20 flex items-center gap-2 transition-transform active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                    تسک جدید
+                </button>
+            </div>
+        </div>
+
+        <div id="dbStatus" class="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300" role="status" aria-live="polite">در حال دریافت اطلاعات...</div>
+
+        <!-- Table Container -->
+        <div class="bg-white dark:bg-panelDark rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-right border-collapse min-w-[1100px]">
+                    <thead class="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-black border-b border-slate-100 dark:border-borderDark">
+                        <tr>
+                            <th class="py-5 px-6 w-16 text-center rounded-tr-3xl">#</th>
+                            <th class="py-5 px-6 w-auto">مشخصات تسک</th>
+                            <th class="py-5 px-4 w-32 text-center">اولویت</th>
+                            <th class="py-5 px-6 w-[250px]">تیم اجرایی</th>
+                            <th class="py-5 px-6 w-40">ددلاین</th>
+                            <th class="py-5 px-6 w-48">وضعیت</th>
+                            <th class="py-5 px-4 w-24 text-center rounded-tl-3xl admin-only hidden-by-auth">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBody" class="divide-y divide-slate-50 dark:divide-slate-800/50 text-sm font-medium">
+                        <!-- JS renders here -->
+                    </tbody>
+                </table>
+                <div id="emptyTasksState" class="hidden flex-col items-center justify-center py-24 text-slate-400">
+                    <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-4 transform rotate-3">
+                        <svg class="w-10 h-10 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    </div>
+                    <p class="text-base font-bold text-slate-500">تسکی در این بخش وجود ندارد.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 modal-backdrop hidden z-50 items-center justify-center overflow-y-auto p-3 sm:p-5">
+        
+        <!-- Modern Task Modal -->
+        <div id="taskModal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle" class="modal-box hidden bg-slate-50 dark:bg-surfaceDark rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden max-h-[94vh] flex flex-col border border-slate-200 dark:border-borderDark transform transition-all">
+            <div class="px-4 sm:px-5 py-3 flex justify-between items-center gap-3 bg-white dark:bg-panelDark border-b border-slate-200 dark:border-borderDark">
+                <h3 id="taskModalTitle" class="text-base font-extrabold text-slate-900 dark:text-white">تسک جدید</h3>
+                <button type="button" onclick="closeModals()" aria-label="بستن پنجره" class="shrink-0 text-slate-500 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            
+            <div class="p-3 sm:p-4 overflow-y-auto custom-scrollbar flex-grow">
+                <form id="taskForm" onsubmit="handleTaskSubmit(event)" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <input type="hidden" id="taskId">
+                    
+                    <!-- Section 1: Main Info -->
+                    <div class="task-section space-y-3">
+                        <h4 class="text-xs font-extrabold text-primary">اطلاعات کار</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+                            <div class="md:col-span-2">
+                                <label for="taskTitle" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">عنوان کار <span class="text-danger">*</span></label>
+                                <input type="text" id="taskTitle" class="input-modern font-bold text-base" placeholder="مثلاً آماده‌سازی داده‌های پایه" required>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="taskDesc" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">توضیحات تکمیلی</label>
+                                <textarea id="taskDesc" rows="2" class="input-modern" placeholder="جزئیات و نتیجه مورد انتظار این کار را بنویسید..."></textarea>
+                            </div>
+                            <div>
+                                <label for="taskStage" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">مرحله استقرار <span class="text-danger">*</span></label>
+                                <select id="taskStage" class="input-modern" required></select>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                                <div>
+                                    <label for="taskPriority" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">اولویت</label>
+                                    <select id="taskPriority" class="input-modern"><option>پایین</option><option selected>متوسط</option><option>بالا</option></select>
+                                </div>
+                                <div>
+                                    <label for="taskStatus" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">وضعیت</label>
+                                    <select id="taskStatus" class="input-modern font-bold"><option>انجام نشده</option><option>در حال انجام</option><option>انجام شده</option></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 min-w-0">
+                    <!-- Section 2: Team -->
+                    <div class="task-section space-y-3">
+                        <h4 class="text-xs font-extrabold text-primary">افراد مسئول</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                            <div>
+                                <label for="taskAssignee" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">مسئول انجام</label>
+                                <select id="taskAssignee" class="input-modern bg-white dark:bg-panelDark"></select>
+                            </div>
+                            <div>
+                                <label for="taskReviewer" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">ناظر / تایید کننده</label>
+                                <select id="taskReviewer" class="input-modern bg-white dark:bg-panelDark"></select>
+                            </div>
+                            <div>
+                                <label for="taskReceiver" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">تحویل گیرنده</label>
+                                <select id="taskReceiver" class="input-modern bg-white dark:bg-panelDark"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Time & Deps -->
+                    <div class="task-section space-y-3">
+                        <h4 class="text-xs font-extrabold text-primary">زمان‌بندی و وابستگی‌ها</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+                            <div>
+                                <label for="taskDeadline" class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">مهلت انجام</label>
+                                <input type="date" id="taskDeadline" onchange="previewJalaliDate(this.value)" class="input-modern" dir="ltr">
+                                <p id="jalaliPreview" class="text-xs text-primary font-bold mt-2 min-h-4"></p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">پیش‌نیازها</label>
+                                <div id="depAdminView" class="relative hidden">
+                                    <div id="depTrigger" onclick="toggleDepDropdown(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDepDropdown(event)}" role="button" tabindex="0" aria-label="انتخاب پیش‌نیازها" aria-controls="depDropdown" aria-expanded="false" class="input-modern min-h-[44px] cursor-pointer flex flex-wrap gap-2">
+                                        <div id="depPillsContainer" class="flex flex-wrap gap-1.5 items-center w-full"></div>
+                                    </div>
+                                    <div id="depDropdown" class="hidden fixed bg-white dark:bg-panelDark border border-slate-200 dark:border-borderDark rounded-xl shadow-xl z-[100] flex flex-col overflow-hidden">
+                                        <div class="p-2 border-b border-slate-100 dark:border-borderDark"><input type="text" id="depSearchInput" oninput="filterDeps(this.value)" placeholder="جستجو..." class="input-modern py-1.5 text-xs"></div>
+                                        <div id="depOptionsList" class="min-h-0 overflow-y-auto custom-scrollbar p-1.5 space-y-1"></div>
+                                    </div>
+                                </div>
+                                <div id="depGuestView" class="hidden flex-wrap gap-1.5 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-borderDark min-h-[44px]"></div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </form>
+            </div>
+            <div class="px-3 sm:px-4 py-2.5 border-t border-slate-200 dark:border-borderDark flex items-center justify-between gap-3 bg-white dark:bg-panelDark">
+                <span class="hidden sm:inline text-xs text-slate-500 dark:text-slate-400">* فیلد الزامی</span>
+                <div class="flex gap-2 w-full sm:w-auto justify-end">
+                    <button type="button" id="deleteTaskBtn" onclick="deleteTask(document.getElementById('taskId').value, 'taskModal')" class="hidden flex-1 sm:flex-none px-4 py-1.5 text-sm font-bold text-danger hover:bg-red-50 dark:hover:bg-red-900/20 border border-danger/30 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger">حذف تسک</button>
+                    <button type="button" id="cancelTaskBtn" onclick="closeModals()" class="flex-1 sm:flex-none px-4 py-1.5 text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 dark:border-borderDark rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">انصراف</button>
+                    <button type="submit" id="saveTaskBtn" form="taskForm" class="flex-1 sm:flex-none px-5 py-1.5 text-sm font-bold bg-primary text-white hover:bg-primaryHover rounded-lg shadow-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">ذخیره تسک</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="peopleModal" role="dialog" aria-modal="true" aria-labelledby="peopleModalTitle" class="modal-box hidden bg-white dark:bg-panelDark rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-borderDark">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 dark:border-borderDark">
+                <h3 id="peopleModalTitle" class="text-base font-extrabold">مدیریت افراد</h3>
+                <button type="button" onclick="closeModals()" aria-label="بستن پنجره" class="text-slate-500 hover:text-primary p-1.5 rounded-lg">✕</button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4">
+                <form id="personForm" onsubmit="savePerson(event)" class="flex flex-col sm:flex-row items-end gap-2">
+                    <input type="hidden" id="personId">
+                    <div class="w-full"><label for="personName" class="block text-xs font-bold mb-1">نام شخص</label><input id="personName" class="input-modern" type="text" maxlength="80" placeholder="نام و نام خانوادگی" required></div>
+                    <button id="savePersonBtn" type="submit" class="w-full sm:w-auto shrink-0 bg-primary hover:bg-primaryHover text-white text-sm font-bold px-5 py-2.5 rounded-xl">افزودن</button>
+                    <button id="cancelPersonEditBtn" type="button" onclick="resetPersonForm()" class="hidden w-full sm:w-auto shrink-0 text-slate-600 dark:text-slate-300 text-sm font-bold px-3 py-2.5">لغو ویرایش</button>
+                </form>
+                <div id="peopleList" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div id="stagesModal" role="dialog" aria-modal="true" aria-labelledby="stagesModalTitle" class="modal-box hidden bg-white dark:bg-panelDark rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-borderDark">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 dark:border-borderDark">
+                <h3 id="stagesModalTitle" class="text-base font-extrabold">تنظیم مراحل استقرار</h3>
+                <button type="button" onclick="closeModals()" aria-label="بستن پنجره" class="text-slate-500 hover:text-primary p-1.5 rounded-lg">✕</button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4">
+                <form id="stageForm" onsubmit="saveStage(event)" class="space-y-3">
+                    <input type="hidden" id="stageId">
+                    <div><label for="stageName" class="block text-xs font-bold mb-1">نام مرحله</label><input id="stageName" class="input-modern" type="text" maxlength="80" placeholder="نام مرحله استقرار" required></div>
+                    <div><label for="stageDescription" class="block text-xs font-bold mb-1">توضیحات مرحله</label><textarea id="stageDescription" class="input-modern" rows="2" placeholder="شرح این مرحله"></textarea></div>
+                    <div class="flex items-center gap-2"><button id="saveStageBtn" type="submit" class="bg-primary hover:bg-primaryHover text-white text-sm font-bold px-5 py-2.5 rounded-xl">افزودن مرحله</button><button id="cancelStageEditBtn" type="button" onclick="resetStageForm()" class="hidden text-slate-600 dark:text-slate-300 text-sm font-bold px-3 py-2.5">لغو ویرایش</button></div>
+                </form>
+                <div id="stagesList" class="space-y-2 border-t border-slate-200 dark:border-borderDark pt-4"></div>
+            </div>
+        </div>
+
+        <div id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle" class="modal-box hidden bg-white dark:bg-panelDark rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-borderDark">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 dark:border-borderDark"><h3 id="backupModalTitle" class="text-base font-extrabold">انتقال اطلاعات</h3><button type="button" onclick="closeModals()" aria-label="بستن پنجره" class="text-slate-500 hover:text-primary p-1.5 rounded-lg">✕</button></div>
+            <div class="p-5 space-y-5">
+                <div class="space-y-2"><h4 class="text-sm font-bold">خروجی JSON</h4><p class="text-xs text-slate-500 dark:text-slate-400">مراحل، افراد و تسک‌ها همراه وضعیت و پیش‌نیازها در یک فایل ذخیره می‌شوند.</p><button type="button" onclick="exportAppData()" class="bg-primary hover:bg-primaryHover text-white text-sm font-bold px-4 py-2 rounded-xl">دریافت فایل خروجی</button></div>
+                <div class="border-t border-slate-200 dark:border-borderDark pt-4 space-y-2"><h4 class="text-sm font-bold">ورود JSON</h4><p class="text-xs text-slate-500 dark:text-slate-400">فایل خروجی همین برنامه را انتخاب کنید. ورود، داده‌های فعلی دیتابیس را جایگزین می‌کند.</p><label for="importJsonFile" class="block text-xs font-bold">فایل JSON</label><input id="importJsonFile" type="file" accept=".json,application/json" onchange="handleImportFileSelected(event)" class="input-modern text-xs"><p id="importPreview" class="text-xs text-slate-500 dark:text-slate-400 min-h-5 max-h-40 overflow-y-auto whitespace-pre-line" aria-live="polite">فایلی انتخاب نشده است.</p><button id="importDataBtn" type="button" onclick="beginImport()" disabled class="bg-primary hover:bg-primaryHover disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-xl">ورود اطلاعات</button></div>
+            </div>
+        </div>
+
+        <div id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" class="modal-box hidden bg-white dark:bg-panelDark rounded-2xl shadow-2xl w-full max-w-sm p-5 border border-slate-200 dark:border-borderDark">
+            <h3 id="confirmTitle" class="text-base font-extrabold mb-2">تأیید حذف</h3>
+            <p id="confirmMessage" class="text-sm text-slate-600 dark:text-slate-300 mb-5"></p>
+            <div class="flex justify-end gap-2"><button type="button" onclick="cancelDelete()" class="text-sm font-bold px-4 py-2 rounded-lg border border-slate-200 dark:border-borderDark">انصراف</button><button id="confirmActionBtn" type="button" onclick="runConfirmedDelete()" class="text-sm font-bold px-4 py-2 rounded-lg bg-danger text-white">حذف</button></div>
+        </div>
+
+        <div id="loginModal" class="modal-box hidden bg-white dark:bg-panelDark rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden transform transition-all">
+            <div class="p-6 text-center"><h3 class="text-xl font-black text-slate-900 dark:text-white">ورود مدیر</h3><p class="text-xs text-slate-500 mt-1">جهت دسترسی به ویرایش اطلاعات</p></div>
+            <div class="px-6 pb-6 space-y-4">
+                <input type="text" id="loginUser" placeholder="نام کاربری" class="input-modern text-center" dir="ltr">
+                <input type="password" id="loginPass" placeholder="رمز عبور" class="input-modern text-center" dir="ltr">
+                <div id="loginError" class="text-danger text-xs font-bold text-center hidden">اطلاعات نادرست است</div>
+                <button onclick="handleLogin(event)" class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm shadow-md shadow-primary/20 active:scale-95 transition-transform">ورود</button>
+                <button onclick="closeModals()" class="w-full text-slate-500 text-xs font-bold py-2">انصراف</button>
+            </div>
+        </div>
+
+    </div>
+    <div id="toastContainer" class="fixed bottom-8 right-8 z-[70] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Minimal JS port of original logic to support the redesigned DOM -->
+    <script>
+        // Supabase connection for this standalone deployment plan.
+        // Fill these only after the SQL schema and RLS policies have been applied.
+        // Use the project's publishable key; never put a secret/service_role key here.
+        const ERP_SUPABASE_SETTINGS = Object.freeze({
+            projectUrl: 'https://ivaqqnfdxezvwngkdubt.supabase.co',
+            publishableKey: 'sb_publishable_H2SwQP20rboF6yn_8XwThw_q61alQzP'
+        });
+
+        const DB_TABLES = Object.freeze({ stages: 'erp_deployment_stages', people: 'erp_deployment_people', tasks: 'erp_deployment_tasks', dependencies: 'erp_deployment_dependencies' });
+        let stages = [];
+        let people = [];
+        let tasks = [];
+        let isAdmin = localStorage.getItem('erp_isAdmin') === 'true';
+        let activeStageId = stages[0]?.id || null;
+        let isSearchMode = false; let currentSelectedDeps = []; let currentExcludeTaskId = null;
+        let pendingDelete = null;
+        let pendingImport = null; let importSelectionSeq = 0;
+        let dataReady = false;
+        let dbBusy = false;
+        let loadSequence = 0;
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+        }
+        function makeId() { return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9); }
+
+        function dbConfigured() {
+            return /^https:\/\/[^/]+$/.test(ERP_SUPABASE_SETTINGS.projectUrl.replace(/\/$/, '')) && !!ERP_SUPABASE_SETTINGS.publishableKey;
+        }
+        async function dbRequest(table, { method = 'GET', query = '', body, headers = {} } = {}) {
+            if (!dbConfigured()) throw new Error('نشانی پروژه و کلید عمومی Supabase در تنظیمات فایل وارد نشده است.');
+            const url = ERP_SUPABASE_SETTINGS.projectUrl.replace(/\/$/, '') + '/rest/v1/' + table + (query ? '?' + query : '');
+            const requestHeaders = { apikey: ERP_SUPABASE_SETTINGS.publishableKey, Accept: 'application/json', ...headers };
+            if (ERP_SUPABASE_SETTINGS.publishableKey.startsWith('eyJ')) requestHeaders.Authorization = 'Bearer ' + ERP_SUPABASE_SETTINGS.publishableKey;
+            if (body !== undefined) requestHeaders['Content-Type'] = 'application/json';
+            let response;
+            try { response = await fetch(url, { method, headers: requestHeaders, cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) }); }
+            catch (error) { throw new Error('ارتباط با Supabase برقرار نشد. اتصال اینترنت و نشانی پروژه را بررسی کنید.'); }
+            const raw = await response.text();
+            let result;
+            try { result = raw ? JSON.parse(raw) : null; } catch (error) { result = null; }
+            if (!response.ok) throw new Error((result && (result.message || result.hint)) || `خطای دیتابیس (${response.status})`);
+            return result;
+        }
+        async function dbRows(table, order) {
+            const rows = [];
+            for (let start = 0; ; start += 1000) {
+                const page = await dbRequest(table, { query: 'select=*&order=' + encodeURIComponent(order), headers: { Range: `${start}-${start + 999}` } });
+                if (!Array.isArray(page)) throw new Error('پاسخ خواندن اطلاعات از دیتابیس نامعتبر است.');
+                rows.push(...page);
+                if (page.length < 1000) return rows;
+            }
+        }
+        function stageFromRow(row) { return { id: row.id, name: row.name, description: row.description || '', order: row.sort_order }; }
+        function personFromRow(row) { return { id: row.id, name: row.name }; }
+        function taskFromRow(row, links) {
+            return { id: row.id, stageId: row.stage_id, title: row.title, desc: row.description || '',
+                priority: row.priority, status: row.status, assigneeId: row.assignee_id || '', reviewerId: row.reviewer_id || '',
+                receiverId: row.receiver_id || '', deadline: row.deadline || '', order: row.sort_order,
+                dependencies: links.get(row.id) || [] };
+        }
+        function stageToRow(stage) { return { id: stage.id, name: stage.name, description: stage.description || '', sort_order: stage.order }; }
+        function personToRow(person) { return { id: person.id, name: person.name }; }
+        function taskToRow(task) {
+            return { id: task.id, stage_id: task.stageId, title: task.title, description: task.desc || '',
+                priority: task.priority, status: task.status, assignee_id: task.assigneeId || null,
+                reviewer_id: task.reviewerId || null, receiver_id: task.receiverId || null,
+                deadline: task.deadline || null, sort_order: task.order };
+        }
+        function dbFilter(column, value) { return column + '=eq.' + encodeURIComponent(String(value)); }
+        async function dbWrite(table, method, query, body, expectedRows = 1) {
+            const result = await dbRequest(table, { method, query, body, headers: { Prefer: 'return=representation' } });
+            if (!Array.isArray(result) || result.length !== expectedRows) throw new Error('تعداد ردیف‌های تغییرکرده در دیتابیس مطابق انتظار نیست.');
+            return result;
+        }
+        async function dbUpsert(table, rows) {
+            if (!rows.length) return;
+            for (let start = 0; start < rows.length; start += 200) {
+                const chunk = rows.slice(start, start + 200);
+                const result = await dbRequest(table, { method: 'POST', body: chunk, headers: { Prefer: 'resolution=merge-duplicates,missing=default,return=representation' } });
+                if (!Array.isArray(result) || result.length !== chunk.length) throw new Error('همه ردیف‌ها در دیتابیس ذخیره نشدند.');
+            }
+        }
+        function setDbStatus(message, retry = false) {
+            const element = document.getElementById('dbStatus');
+            element.textContent = message;
+            element.classList.toggle('hidden', !message);
+            if (retry) {
+                const button = document.createElement('button');
+                button.type = 'button'; button.textContent = 'تلاش دوباره';
+                button.className = 'mr-3 text-primary font-bold underline';
+                button.addEventListener('click', () => loadAllData());
+                element.appendChild(button);
+            }
+        }
+        async function loadAllData() {
+            const sequence = ++loadSequence;
+            dataReady = false;
+            setDbStatus('در حال دریافت اطلاعات از دیتابیس...');
+            try {
+                const [stageRows, personRows, taskRows, dependencyRows] = await Promise.all([
+                    dbRows(DB_TABLES.stages, 'sort_order.asc,id.asc'), dbRows(DB_TABLES.people, 'id.asc'),
+                    dbRows(DB_TABLES.tasks, 'id.asc'), dbRows(DB_TABLES.dependencies, 'task_id.asc,depends_on_task_id.asc')
+                ]);
+                if (sequence !== loadSequence) return false;
+                const links = new Map();
+                dependencyRows.forEach(row => { if (!links.has(row.task_id)) links.set(row.task_id, []); links.get(row.task_id).push(row.depends_on_task_id); });
+                stages = stageRows.map(stageFromRow);
+                people = personRows.map(personFromRow);
+                tasks = taskRows.map(row => taskFromRow(row, links));
+                if (!stages.some(stage => stage.id === activeStageId)) activeStageId = stages[0]?.id || null;
+                dataReady = true;
+                setDbStatus(stages.length ? '' : isAdmin ? 'هنوز مرحله‌ای در دیتابیس ثبت نشده است. برای شروع از «تنظیمات مراحل» استفاده کنید.' : 'هنوز مرحله‌ای در دیتابیس ثبت نشده است.');
+                renderStagesTabs(); renderStageDescription(activeStageId); refreshCurrentView();
+                return true;
+            } catch (error) {
+                if (sequence !== loadSequence) return false;
+                setDbStatus('خواندن اطلاعات از دیتابیس ممکن نشد: ' + error.message, true);
+                return false;
+            }
+        }
+        async function runDbAction(action, successMessage) {
+            if (!isAdmin || dbBusy) return false;
+            if (!dataReady) { showToast('ابتدا دریافت اطلاعات از دیتابیس باید موفق شود.'); return false; }
+            dbBusy = true;
+            try {
+                await action();
+                const refreshed = await loadAllData();
+                if (refreshed && successMessage) showToast(successMessage, 'success');
+                else if (!refreshed) showToast('تغییر ثبت شد؛ دریافت دوباره اطلاعات ناموفق بود.');
+                return true;
+            } catch (error) {
+                showToast('ثبت تغییر ممکن نشد: ' + error.message);
+                await loadAllData();
+                return false;
+            } finally { dbBusy = false; }
+        }
+
+        function init() {
+            document.body.appendChild(document.getElementById('depDropdown'));
+            initTheme(); updateAuthUI(); loadAllData();
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.relative.group')) document.getElementById('searchOptionsPopover').classList.add('hidden');
+                if (!document.getElementById('depTrigger').contains(e.target) && !document.getElementById('depDropdown').contains(e.target)) closeDepDropdown();
+            });
+            document.addEventListener('scroll', positionDepDropdown, true);
+            window.addEventListener('resize', positionDepDropdown);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden && !dbBusy) loadAllData(); });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('depDropdown').classList.contains('hidden')) { closeDepDropdown(); document.getElementById('depTrigger').focus(); } });
+        }
+
+        function initTheme() {
+            if (localStorage.getItem('erp_theme') === 'dark') document.documentElement.classList.add('dark');
+            updateThemeIcon();
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('erp_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+                updateThemeIcon();
+            });
+        }
+        function updateThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.getElementById('icon-sun').style.display = isDark ? 'block' : 'none';
+            document.getElementById('icon-moon').style.display = isDark ? 'none' : 'block';
+        }
+
+        function showToast(msg, type = 'error') {
+            const container = document.getElementById('toastContainer'); const t = document.createElement('div');
+            const bg = type === 'error' ? 'bg-white dark:bg-panelDark border-l-4 border-danger text-slate-800 dark:text-white' : 'bg-white dark:bg-panelDark border-l-4 border-success text-slate-800 dark:text-white';
+            t.className = `toast-enter flex items-center px-5 py-4 rounded-2xl shadow-glass border border-slate-100 dark:border-borderDark ${bg} text-sm font-bold`;
+            t.textContent = msg; container.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+        }
+
+        function toggleAuthModal() {
+            if (isAdmin) { isAdmin = false; localStorage.setItem('erp_isAdmin', 'false'); updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خروج موفق', 'success'); } 
+            else { document.getElementById('loginError').classList.add('hidden'); document.getElementById('loginUser').value=''; document.getElementById('loginPass').value=''; openModal('loginModal'); }
+        }
+        function handleLogin(e) {
+            e.preventDefault(); const u = document.getElementById('loginUser').value; const p = document.getElementById('loginPass').value;
+            if (u === 'admin' && p === 'Admin123?') { // Simplified for demo
+                isAdmin = true; localStorage.setItem('erp_isAdmin', 'true'); closeModals(); updateAuthUI(); renderStagesTabs(); refreshCurrentView(); showToast('خوش آمدید', 'success');
+            } else document.getElementById('loginError').classList.remove('hidden');
+        }
+
+        function updateAuthUI() {
+            document.getElementById('authBtnText').innerText = isAdmin ? 'خروج مدیر' : 'ورود مدیر';
+            document.querySelectorAll('.admin-only').forEach(el => isAdmin ? el.classList.remove('hidden-by-auth') : el.classList.add('hidden-by-auth'));
+            if(activeStageId) renderStageDescription(activeStageId);
+        }
+
+        function getPersonName(id) { return people.find(x => String(x.id) === String(id))?.name || ''; }
+        function isOverdue(dateStr, status) { if (!dateStr || status === 'انجام شده') return false; const t = new Date(dateStr); t.setHours(0,0,0,0); const td = new Date(); td.setHours(0,0,0,0); return t <= td; }
+
+        function updateProgressBars() {
+            const total = tasks.length; const comp = tasks.filter(t => t.status === 'انجام شده').length; const perc = total === 0 ? 0 : Math.round((comp / total) * 100);
+            document.getElementById('overallProgressText').innerText = perc + '%'; document.getElementById('overallTaskCountText').innerText = `${comp} / ${total} تسک`; document.getElementById('overallProgressBar').style.width = perc + '%';
+            if (activeStageId && !isSearchMode) {
+                const sTasks = tasks.filter(t => t.stageId === activeStageId); const sComp = sTasks.filter(t => t.status === 'انجام شده').length; const sPerc = sTasks.length === 0 ? 0 : Math.round((sComp / sTasks.length) * 100);
+                document.getElementById('stageProgressText').innerText = sPerc + '%'; document.getElementById('stageProgressBar').style.width = sPerc + '%';
+            }
+        }
+
+        function openModal(id) { closeDepDropdown(); document.getElementById('modalOverlay').classList.remove('hidden'); document.getElementById('modalOverlay').classList.add('flex'); document.querySelectorAll('.modal-box').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+        function closeModals() { closeDepDropdown(); document.getElementById('modalOverlay').classList.add('hidden'); document.getElementById('modalOverlay').classList.remove('flex'); }
+
+        function askConfirm(message, returnModal, action, title, actionLabel) {
+            pendingDelete = { returnModal, action };
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmActionBtn').textContent = actionLabel;
+            openModal('confirmModal');
+        }
+        function askDelete(message, returnModal, action) { askConfirm(message, returnModal, action, 'تأیید حذف', 'حذف'); }
+        function cancelDelete() {
+            const returnModal = pendingDelete?.returnModal;
+            pendingDelete = null;
+            returnModal ? openModal(returnModal) : closeModals();
+        }
+        async function runConfirmedDelete() {
+            if (!pendingDelete) return;
+            const { returnModal, action } = pendingDelete;
+            pendingDelete = null;
+            const button = document.getElementById('confirmActionBtn');
+            button.disabled = true;
+            try {
+                const completed = await action();
+                if (completed === true) closeModals();
+                else returnModal ? openModal(returnModal) : closeModals();
+            } finally { button.disabled = false; }
+        }
+
+        function openBackupModal() {
+            if (!isAdmin) return;
+            pendingImport = null; importSelectionSeq++;
+            document.getElementById('importJsonFile').value = '';
+            document.getElementById('importPreview').textContent = 'فایلی انتخاب نشده است.';
+            document.getElementById('importDataBtn').disabled = true;
+            openModal('backupModal');
+        }
+        async function exportAppData() {
+            if (!isAdmin || dbBusy) return;
+            try {
+                if (!await loadAllData()) { showToast('دریافت اطلاعات تازه از دیتابیس ممکن نشد.'); return; }
+                const payload = { format: 'erp-deployment-plan', version: 1, exportedAt: new Date().toISOString(), stages, people, tasks };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'erp-deployment-plan-' + new Date().toISOString().slice(0, 10) + '.json';
+                document.body.appendChild(link); link.click(); link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast('فایل خروجی آماده شد', 'success');
+            } catch (error) { showToast('ساخت فایل خروجی ممکن نشد'); }
+        }
+        function importText(value, label, required = false, maxLength = 10000) {
+            if (value == null && !required) return '';
+            if (typeof value !== 'string' || value.length > maxLength || (required && !value.trim())) throw new Error(label + ' معتبر نیست.');
+            return value.trim();
+        }
+        function importId(value, label) {
+            if (typeof value !== 'string' && typeof value !== 'number') throw new Error(label + ' معتبر نیست.');
+            const id = String(value).trim();
+            if (!id || id.length > 100) throw new Error(label + ' معتبر نیست.');
+            return id;
+        }
+        function normalizeImportDate(value) {
+            if (value == null || value === '') return '';
+            if (typeof value === 'number') {
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+            }
+            if (typeof value !== 'string') return null;
+            const normalized = value.replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776))
+                .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632))
+                .replace(/[\u200e\u200f\u061c]/g, '').trim();
+            if (!normalized) return '';
+            const parts = normalized.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s].*)?$/);
+            if (!parts) return null;
+            const year = Number(parts[1]), month = Number(parts[2]), day = Number(parts[3]);
+            if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+            if (year >= 1300 && year <= 1499) {
+                const formatter = new Intl.DateTimeFormat('en-US-u-ca-persian', { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' });
+                const persianParts = date => Object.fromEntries(formatter.formatToParts(date).filter(part => ['year', 'month', 'day'].includes(part.type)).map(part => [part.type, Number(part.value)]));
+                let yearStart = null;
+                for (let marchDay = 19; marchDay <= 23; marchDay++) {
+                    const candidate = new Date(Date.UTC(year + 621, 2, marchDay));
+                    const calendar = persianParts(candidate);
+                    if (calendar.year === year && calendar.month === 1 && calendar.day === 1) { yearStart = candidate; break; }
+                }
+                if (!yearStart) return null;
+                const offset = (month <= 6 ? (month - 1) * 31 : 186 + (month - 7) * 30) + day - 1;
+                const date = new Date(yearStart.getTime() + offset * 86400000);
+                const calendar = persianParts(date);
+                return calendar.year === year && calendar.month === month && calendar.day === day ? date.toISOString().slice(0, 10) : null;
+            }
+            const date = new Date(Date.UTC(year, month - 1, day));
+            return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day ? date.toISOString().slice(0, 10) : null;
+        }
+        function validateImport(payload) {
+            if (!payload || typeof payload !== 'object' || Array.isArray(payload) || payload.format !== 'erp-deployment-plan' || payload.version !== 1) throw new Error('این فایل خروجی معتبر همین برنامه نیست.');
+            if (!Array.isArray(payload.stages) || !Array.isArray(payload.people) || !Array.isArray(payload.tasks) || !payload.stages.length) throw new Error('فهرست مراحل، افراد یا تسک‌ها معتبر نیست.');
+            const isRecord = value => value && typeof value === 'object' && !Array.isArray(value);
+            const report = { skippedStages: 0, skippedPeople: 0, skippedTasks: 0, ignoredFields: 0, issues: [] };
+            const note = (message, skippedType = null) => {
+                if (skippedType) report[skippedType]++;
+                else report.ignoredFields++;
+                if (report.issues.length < 15) report.issues.push(message);
+            };
+            const importedStages = [], stageIds = new Set();
+            payload.stages.forEach((item, index) => {
+                try {
+                    if (!isRecord(item)) throw new Error('رکورد معتبر نیست');
+                    const id = importId(item.id, 'شناسه مرحله');
+                    const name = importText(item.name, 'نام مرحله', true, 80);
+                    if (stageIds.has(id)) throw new Error('شناسه تکراری است');
+                    let description = '';
+                    try { description = importText(item.description, 'توضیح مرحله'); }
+                    catch (error) { note(`مرحله ردیف ${index + 1}: توضیح نامعتبر کنار گذاشته شد.`); }
+                    importedStages.push({ id, name, description, order: Number.isFinite(Number(item.order)) && Number(item.order) > 0 ? Number(item.order) : index + 1 });
+                    stageIds.add(id);
+                } catch (error) { note(`مرحله ردیف ${index + 1}: ${error.message}`, 'skippedStages'); }
+            });
+            if (!importedStages.length) throw new Error('هیچ مرحله معتبری برای ورود وجود ندارد.');
+            importedStages.sort((a, b) => a.order - b.order).forEach((item, index) => { item.order = index + 1; });
+            const importedPeople = [], personIds = new Set();
+            payload.people.forEach((item, index) => {
+                try {
+                    if (!isRecord(item)) throw new Error('رکورد معتبر نیست');
+                    const id = importId(item.id, 'شناسه شخص');
+                    const name = importText(item.name, 'نام شخص', true, 80);
+                    if (personIds.has(id)) throw new Error('شناسه تکراری است');
+                    importedPeople.push({ id, name }); personIds.add(id);
+                } catch (error) { note(`شخص ردیف ${index + 1}: ${error.message}`, 'skippedPeople'); }
+            });
+            const importedTasks = [], taskIds = new Set(), taskRows = new Map();
+            payload.tasks.forEach((item, index) => {
+                try {
+                    if (!isRecord(item)) throw new Error('رکورد معتبر نیست');
+                    const id = importId(item.id, 'شناسه تسک');
+                    const title = importText(item.title, 'عنوان تسک', true, 200);
+                    const stageId = importId(item.stageId, 'مرحله تسک');
+                    if (taskIds.has(id)) throw new Error('شناسه تکراری است');
+                    if (!stageIds.has(stageId)) throw new Error('مرحله آن در فایل معتبر نیست');
+                    let desc = '';
+                    try { desc = importText(item.desc, 'توضیح تسک'); }
+                    catch (error) { note(`تسک ردیف ${index + 1}: توضیح نامعتبر کنار گذاشته شد.`); }
+                    const deadline = normalizeImportDate(item.deadline);
+                    if (deadline === null) note(`تسک ردیف ${index + 1}: تاریخ مهلت قابل تشخیص نبود و خالی وارد می‌شود.`);
+                    const personRef = (value, label) => {
+                        if (value == null || value === '') return '';
+                        try {
+                            const personId = importId(value, label);
+                            if (personIds.has(personId)) return personId;
+                        } catch (error) { /* The reference is handled below. */ }
+                        note(`تسک ردیف ${index + 1}: ${label} نامعتبر کنار گذاشته شد.`);
+                        return '';
+                    };
+                    const priority = ['پایین', 'متوسط', 'بالا'].includes(item.priority) ? item.priority : 'متوسط';
+                    const status = ['انجام نشده', 'در حال انجام', 'انجام شده'].includes(item.status) ? item.status : 'انجام نشده';
+                    if (item.priority != null && item.priority !== priority) note(`تسک ردیف ${index + 1}: اولویت نامعتبر با مقدار پیش‌فرض جایگزین شد.`);
+                    if (item.status != null && item.status !== status) note(`تسک ردیف ${index + 1}: وضعیت نامعتبر با مقدار پیش‌فرض جایگزین شد.`);
+                    const sourceDeps = item.dependencies ?? item.deps ?? [];
+                    if (!Array.isArray(sourceDeps)) note(`تسک ردیف ${index + 1}: فهرست پیش‌نیاز نامعتبر کنار گذاشته شد.`);
+                    const dependencies = [];
+                    (Array.isArray(sourceDeps) ? sourceDeps : []).forEach(value => {
+                        try { dependencies.push(importId(value, 'شناسه پیش‌نیاز')); }
+                        catch (error) { note(`تسک ردیف ${index + 1}: یک پیش‌نیاز نامعتبر کنار گذاشته شد.`); }
+                    });
+                    importedTasks.push({ id, title, desc, stageId, priority, status,
+                        assigneeId: personRef(item.assigneeId, 'مسئول'), reviewerId: personRef(item.reviewerId, 'ناظر'), receiverId: personRef(item.receiverId, 'تحویل‌گیرنده'),
+                        deadline: deadline ?? '', order: Number.isFinite(Number(item.order)) && Number(item.order) > 0 ? Number(item.order) : index + 1,
+                        dependencies });
+                    taskIds.add(id); taskRows.set(id, index + 1);
+                } catch (error) { note(`تسک ردیف ${index + 1}: ${error.message}`, 'skippedTasks'); }
+            });
+            const acceptedDeps = new Map(importedTasks.map(task => [task.id, []]));
+            function hasPath(from, target) {
+                const queue = [from], visited = new Set();
+                while (queue.length) {
+                    const id = queue.pop();
+                    if (id === target) return true;
+                    if (visited.has(id)) continue;
+                    visited.add(id); queue.push(...acceptedDeps.get(id));
+                }
+                return false;
+            }
+            importedTasks.forEach(task => {
+                const valid = acceptedDeps.get(task.id);
+                task.dependencies.forEach(id => {
+                    if (!taskIds.has(id) || id === task.id || valid.includes(id) || hasPath(id, task.id)) note(`تسک ردیف ${taskRows.get(task.id)}: یک پیش‌نیاز نامعتبر یا چرخه‌ای کنار گذاشته شد.`);
+                    else valid.push(id);
+                });
+                task.dependencies = valid;
+            });
+            return { stages: importedStages, people: importedPeople, tasks: importedTasks, report };
+        }
+        function importIssueCount(data) {
+            const report = data.report;
+            return report.skippedStages + report.skippedPeople + report.skippedTasks + report.ignoredFields;
+        }
+        function formatImportSummary(data) {
+            const report = data.report;
+            const lines = [`آماده ورود: ${data.stages.length} مرحله، ${data.people.length} شخص و ${data.tasks.length} تسک.`];
+            if (importIssueCount(data)) {
+                lines.push(`کنار گذاشته‌شده: ${report.skippedStages} مرحله، ${report.skippedPeople} شخص، ${report.skippedTasks} تسک و ${report.ignoredFields} مقدار نامعتبر.`);
+                lines.push(...report.issues);
+                if (importIssueCount(data) > report.issues.length) lines.push(`و ${importIssueCount(data) - report.issues.length} مورد دیگر...`);
+            }
+            return lines.join('\n');
+        }
+        async function handleImportFileSelected(event) {
+            const sequence = ++importSelectionSeq;
+            pendingImport = null;
+            document.getElementById('importDataBtn').disabled = true;
+            const preview = document.getElementById('importPreview');
+            const file = event.target.files?.[0];
+            if (!file) { preview.textContent = 'فایلی انتخاب نشده است.'; return; }
+            if (file.size > 10 * 1024 * 1024) { preview.textContent = 'حجم فایل از ۱۰ مگابایت بیشتر است.'; return; }
+            preview.textContent = 'در حال بررسی فایل...';
+            try {
+                const data = validateImport(JSON.parse(await file.text()));
+                if (sequence !== importSelectionSeq) return;
+                pendingImport = data;
+                preview.textContent = formatImportSummary(data);
+                document.getElementById('importDataBtn').disabled = false;
+            } catch (error) { if (sequence === importSelectionSeq) preview.textContent = 'ورود ممکن نیست: ' + (error instanceof SyntaxError ? 'ساختار JSON نامعتبر است.' : error.message); }
+        }
+        function beginImport() {
+            if (!isAdmin || !pendingImport) return;
+            const data = pendingImport;
+            const hasSavedData = stages.length || people.length || tasks.length;
+            if (hasSavedData || importIssueCount(data)) askConfirm('داده‌های معتبر فایل وارد می‌شوند و موارد نامعتبر کنار گذاشته می‌شوند. اطلاعات فعلی دیتابیس جایگزین خواهد شد. ادامه می‌دهید؟', 'backupModal', () => applyImportedData(data), 'جایگزینی اطلاعات', 'جایگزینی');
+            else applyImportedData(data);
+        }
+        async function applyImportedData(data) {
+            if (!isAdmin || !dataReady) return false;
+            const oldStages = stages.map(item => item.id), oldPeople = people.map(item => item.id), oldTasks = tasks.map(item => item.id);
+            const importedStageIds = new Set(data.stages.map(item => item.id));
+            const importedPersonIds = new Set(data.people.map(item => item.id));
+            const importedTaskIds = new Set(data.tasks.map(item => item.id));
+            const completed = await runDbAction(async () => {
+                await dbUpsert(DB_TABLES.stages, data.stages.map(stageToRow));
+                await dbUpsert(DB_TABLES.people, data.people.map(personToRow));
+                await dbUpsert(DB_TABLES.tasks, data.tasks.map(taskToRow));
+                await dbRequest(DB_TABLES.dependencies, { method: 'DELETE', query: 'task_id=not.is.null' });
+                await dbUpsert(DB_TABLES.dependencies, data.tasks.flatMap(task => task.dependencies.map(depId => ({ task_id: task.id, depends_on_task_id: depId }))));
+                for (const id of oldTasks) if (!importedTaskIds.has(id)) await dbWrite(DB_TABLES.tasks, 'DELETE', dbFilter('id', id));
+                for (const id of oldPeople) if (!importedPersonIds.has(id)) await dbWrite(DB_TABLES.people, 'DELETE', dbFilter('id', id));
+                for (const id of oldStages) if (!importedStageIds.has(id)) await dbWrite(DB_TABLES.stages, 'DELETE', dbFilter('id', id));
+            }, importIssueCount(data) ? 'داده‌های معتبر وارد شد؛ موارد نامعتبر کنار گذاشته شد.' : 'اطلاعات فایل وارد شد');
+            if (completed) {
+                activeStageId = data.stages[0].id; isSearchMode = false; pendingImport = null;
+                document.getElementById('globalSearchInput').value = '';
+                if (dataReady) { renderStagesTabs(); renderStageDescription(activeStageId); refreshCurrentView(); }
+                closeModals();
+            }
+            return completed;
+        }
+
+        function openPeopleModal() {
+            if (!isAdmin) return;
+            resetPersonForm(); renderPeopleList(); openModal('peopleModal');
+            document.getElementById('personName').focus();
+        }
+        function resetPersonForm() {
+            document.getElementById('personForm').reset();
+            document.getElementById('personId').value = '';
+            document.getElementById('savePersonBtn').textContent = 'افزودن';
+            document.getElementById('cancelPersonEditBtn').classList.add('hidden');
+        }
+        function renderPeopleList() {
+            const list = document.getElementById('peopleList');
+            list.innerHTML = people.length ? people.map(person => `
+                <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-slate-200 dark:border-borderDark">
+                    <span class="text-sm font-bold truncate">${escapeHtml(person.name)}</span>
+                    <div class="flex gap-1 shrink-0"><button type="button" data-id="${escapeHtml(person.id)}" onclick="editPerson(this.dataset.id)" class="text-xs font-bold text-primary px-2 py-1.5">ویرایش</button><button type="button" data-id="${escapeHtml(person.id)}" onclick="deletePerson(this.dataset.id)" class="text-xs font-bold text-danger px-2 py-1.5">حذف</button></div>
+                </div>`).join('') : '<p class="text-sm text-slate-500 text-center py-5">هنوز شخصی تعریف نشده است.</p>';
+        }
+        function editPerson(id) {
+            const person = people.find(item => String(item.id) === id);
+            if (!person) return;
+            document.getElementById('personId').value = id;
+            document.getElementById('personName').value = person.name;
+            document.getElementById('savePersonBtn').textContent = 'ذخیره تغییرات';
+            document.getElementById('cancelPersonEditBtn').classList.remove('hidden');
+            document.getElementById('personName').focus();
+        }
+        async function savePerson(event) {
+            event.preventDefault();
+            if (!isAdmin) return;
+            const id = document.getElementById('personId').value;
+            const name = document.getElementById('personName').value.trim();
+            if (!name) return;
+            if (people.some(item => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase() && String(item.id) !== id)) { showToast('این نام قبلاً ثبت شده است'); return; }
+            const person = { id: id || makeId(), name };
+            const completed = await runDbAction(() => id
+                ? dbWrite(DB_TABLES.people, 'PATCH', dbFilter('id', id), { name })
+                : dbWrite(DB_TABLES.people, 'POST', '', personToRow(person)), 'اطلاعات شخص ذخیره شد');
+            if (completed) { resetPersonForm(); if (dataReady) { renderPeopleList(); refreshCurrentView(); } }
+        }
+        function deletePerson(id) {
+            if (!isAdmin) return;
+            if (tasks.some(task => [task.assigneeId, task.reviewerId, task.receiverId].some(personId => String(personId) === id))) { showToast('این شخص در تسک‌ها استفاده شده است'); return; }
+            askDelete('این شخص حذف شود؟', 'peopleModal', async () => {
+                const completed = await runDbAction(() => dbWrite(DB_TABLES.people, 'DELETE', dbFilter('id', id)), 'شخص حذف شد');
+                if (completed) { resetPersonForm(); if (dataReady) renderPeopleList(); }
+                return completed;
+            });
+        }
+
+        function openManageStagesModal(editId = null) {
+            if (!isAdmin) return;
+            resetStageForm(); renderStagesList(); openModal('stagesModal');
+            if (editId) editStage(editId);
+            else document.getElementById('stageName').focus();
+        }
+        function editStageDescription() { openManageStagesModal(activeStageId); }
+        function resetStageForm() {
+            document.getElementById('stageForm').reset();
+            document.getElementById('stageId').value = '';
+            document.getElementById('saveStageBtn').textContent = 'افزودن مرحله';
+            document.getElementById('cancelStageEditBtn').classList.add('hidden');
+        }
+        function renderStagesList() {
+            const ordered = [...stages].sort((a, b) => a.order - b.order);
+            document.getElementById('stagesList').innerHTML = ordered.map((stage, index) => `
+                <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-slate-200 dark:border-borderDark">
+                    <div class="min-w-0"><div class="text-sm font-bold truncate">${escapeHtml(stage.name)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(stage.description || '')}</div></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" data-id="${escapeHtml(stage.id)}" onclick="moveStage(this.dataset.id,-1)" ${index === 0 ? 'disabled' : ''} aria-label="انتقال به بالا" class="text-xs px-1.5 py-1.5 disabled:opacity-30">↑</button>
+                        <button type="button" data-id="${escapeHtml(stage.id)}" onclick="moveStage(this.dataset.id,1)" ${index === ordered.length - 1 ? 'disabled' : ''} aria-label="انتقال به پایین" class="text-xs px-1.5 py-1.5 disabled:opacity-30">↓</button>
+                        <button type="button" data-id="${escapeHtml(stage.id)}" onclick="editStage(this.dataset.id)" class="text-xs font-bold text-primary px-2 py-1.5">ویرایش</button>
+                        <button type="button" data-id="${escapeHtml(stage.id)}" onclick="deleteStage(this.dataset.id)" class="text-xs font-bold text-danger px-2 py-1.5">حذف</button>
+                    </div>
+                </div>`).join('');
+        }
+        function editStage(id) {
+            const stage = stages.find(item => String(item.id) === id);
+            if (!stage) return;
+            document.getElementById('stageId').value = id;
+            document.getElementById('stageName').value = stage.name;
+            document.getElementById('stageDescription').value = stage.description || '';
+            document.getElementById('saveStageBtn').textContent = 'ذخیره تغییرات';
+            document.getElementById('cancelStageEditBtn').classList.remove('hidden');
+            document.getElementById('stageName').focus();
+        }
+        async function saveStage(event) {
+            event.preventDefault();
+            if (!isAdmin) return;
+            const id = document.getElementById('stageId').value;
+            const name = document.getElementById('stageName').value.trim();
+            const description = document.getElementById('stageDescription').value.trim();
+            if (!name) return;
+            if (stages.some(item => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase() && String(item.id) !== id)) { showToast('این مرحله قبلاً ثبت شده است'); return; }
+            const stage = { id: id || makeId(), name, description, order: stages.length + 1 };
+            const completed = await runDbAction(() => id
+                ? dbWrite(DB_TABLES.stages, 'PATCH', dbFilter('id', id), { name, description })
+                : dbWrite(DB_TABLES.stages, 'POST', '', stageToRow(stage)), 'مرحله ذخیره شد');
+            if (completed) { resetStageForm(); if (dataReady) { renderStagesList(); renderStagesTabs(); renderStageDescription(activeStageId); refreshCurrentView(); } }
+        }
+        async function moveStage(id, direction) {
+            if (!isAdmin) return;
+            const ordered = [...stages].sort((a, b) => a.order - b.order);
+            const index = ordered.findIndex(item => String(item.id) === id);
+            const target = index + direction;
+            if (index < 0 || target < 0 || target >= ordered.length) return;
+            [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+            await runDbAction(() => dbUpsert(DB_TABLES.stages, ordered.map((item, position) => stageToRow({ ...item, order: position + 1 }))));
+            if (dataReady) { renderStagesList(); renderStagesTabs(); }
+        }
+        function deleteStage(id) {
+            if (!isAdmin) return;
+            if (stages.length <= 1) { showToast('حداقل یک مرحله باید باقی بماند'); return; }
+            if (tasks.some(task => String(task.stageId) === id)) { showToast('این مرحله دارای تسک است'); return; }
+            askDelete('این مرحله حذف شود؟', 'stagesModal', async () => {
+                const completed = await runDbAction(async () => {
+                    await dbWrite(DB_TABLES.stages, 'DELETE', dbFilter('id', id));
+                    const remaining = stages.filter(item => String(item.id) !== id).sort((a, b) => a.order - b.order);
+                    await dbUpsert(DB_TABLES.stages, remaining.map((item, index) => stageToRow({ ...item, order: index + 1 })));
+                }, 'مرحله حذف شد');
+                if (completed) { resetStageForm(); if (dataReady) { renderStagesList(); renderStagesTabs(); renderStageDescription(activeStageId); refreshCurrentView(); } }
+                return completed;
+            });
+        }
+
+        function renderStagesTabs() {
+            const c = document.getElementById('stagesTabsContainer');
+            c.innerHTML = [...stages].sort((a,b)=>a.order-b.order).map(s => {
+                const act = (s.id === activeStageId && !isSearchMode) ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800';
+                return `<button data-id="${escapeHtml(s.id)}" onclick="switchStage(this.dataset.id)" class="whitespace-nowrap py-2 px-6 rounded-xl text-sm font-bold transition-all ${act}">${escapeHtml(s.name)}</button>`;
+            }).join('');
+        }
+        function switchStage(id) { activeStageId = id; renderStagesTabs(); renderStageDescription(id); renderTasksTable(id); updateProgressBars(); }
+        function renderStageDescription(id) {
+            const stage = stages.find(s => s.id === id);
+            if(stage) {
+                document.getElementById('currentStageTitleDisplay').innerText = stage.name;
+                document.getElementById('stageDescriptionText').innerText = stage.description || (isAdmin ? 'توضیحاتی برای این مرحله ثبت نشده است.' : 'بدون مستندات');
+            } else {
+                document.getElementById('currentStageTitleDisplay').innerText = 'مرحله‌ای انتخاب نشده است';
+                document.getElementById('stageDescriptionText').innerText = '';
+            }
+        }
+
+        function renderTasksTable(stageId, sResults = null) {
+            const tbody = document.getElementById('tasksTableBody'); const empty = document.getElementById('emptyTasksState');
+            let dTasks = sResults !== null ? sResults : tasks.filter(t=>t.stageId===stageId).sort((a,b)=>(a.order||0)-(b.order||0));
+            tbody.innerHTML = '';
+            
+            if(dTasks.length === 0) { tbody.parentElement.classList.add('hidden'); empty.classList.remove('hidden'); empty.classList.add('flex'); return; }
+            tbody.parentElement.classList.remove('hidden'); empty.classList.add('hidden'); empty.classList.remove('flex');
+
+            dTasks.forEach((t, i) => {
+                const isOver = isOverdue(t.deadline, t.status);
+                
+                // Minimalist People Pills
+                const renderPerson = (lbl, id) => id ? `<div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-md text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-borderDark" title="${lbl}"><div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>${escapeHtml(getPersonName(id))}</div>` : '';
+                const pStr = `<div class="flex flex-wrap gap-2">${renderPerson('مسئول', t.assigneeId)}${renderPerson('ناظر', t.reviewerId)}</div>`;
+
+                const stBadge = t.status==='انجام شده'?'bg-success/10 text-success border-success/20':t.status==='در حال انجام'?'bg-primary/10 text-primary border-primary/20':'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700';
+                const prBadge = t.priority==='بالا'?'text-danger':t.priority==='پایین'?'text-slate-400':'text-warning';
+
+                let stHtml = isAdmin 
+                    ? `<select data-id="${escapeHtml(t.id)}" onchange="updateTaskStatus(this.dataset.id, this.value)" class="text-xs font-bold rounded-lg px-3 py-1.5 w-full outline-none border transition-all cursor-pointer ${stBadge}"><option ${t.status==='انجام نشده'?'selected':''}>انجام نشده</option><option ${t.status==='در حال انجام'?'selected':''}>در حال انجام</option><option ${t.status==='انجام شده'?'selected':''}>انجام شده</option></select>`
+                    : `<span class="text-xs font-bold border rounded-lg px-3 py-1.5 block text-center ${stBadge}">${t.status}</span>`;
+
+                tbody.innerHTML += `
+                    <tr data-id="${escapeHtml(t.id)}" class="row-hover group cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors" onclick="openTaskModal(this.dataset.id)">
+                        <td class="py-5 px-6 align-middle text-center font-black text-slate-300 dark:text-slate-600">${i+1}</td>
+                        <td class="py-5 px-6 align-middle">
+                            <div class="font-extrabold text-sm text-slate-800 dark:text-slate-100 mb-1">${escapeHtml(t.title)}</div>
+                            ${t.desc?`<div class="text-xs text-slate-400 line-clamp-1">${escapeHtml(t.desc)}</div>`:''}
+                        </td>
+                        <td class="py-5 px-4 align-middle text-center"><span class="text-xs font-bold flex items-center justify-center gap-1 ${prBadge}"><div class="w-1.5 h-1.5 rounded-full currentColor bg-current"></div>${escapeHtml(t.priority)}</span></td>
+                        <td class="py-5 px-6 align-middle">${pStr || '<span class="text-xs text-slate-400 font-medium">تخصیص نیافته</span>'}</td>
+                        <td class="py-5 px-6 align-middle text-xs font-bold ${isOver?'text-danger':'text-slate-500'}" dir="ltr">${escapeHtml(t.deadline || '-')}</td>
+                        <td class="py-5 px-6 align-middle" onclick="event.stopPropagation();">${stHtml}</td>
+                        <td class="py-5 px-4 align-middle text-center admin-only ${isAdmin ? '' : 'hidden-by-auth'}">
+                            <div class="action-btns flex justify-center gap-2">
+                                <button type="button" data-id="${escapeHtml(t.id)}" onclick="event.stopPropagation(); deleteTask(this.dataset.id)" aria-label="حذف تسک" title="حذف تسک" class="text-slate-500 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function refreshCurrentView() { renderTasksTable(activeStageId); updateProgressBars(); }
+        function getTaskDeps(task) {
+            return Array.isArray(task?.dependencies) ? task.dependencies : Array.isArray(task?.deps) ? task.deps : [];
+        }
+        function populatePersonSelect(id, selected) {
+            const select = document.getElementById(id);
+            select.innerHTML = '<option value="">انتخاب نشده</option>' + people.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(person.name)}</option>`).join('');
+            select.value = selected || '';
+        }
+        function openTaskModal(id = null) {
+            if (!isAdmin && !id) return;
+            const task = id ? tasks.find(item => String(item.id) === String(id)) : null;
+            if (id && !task) { showToast('تسک پیدا نشد'); return; }
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskId').value = task?.id || '';
+            document.getElementById('taskModalTitle').textContent = task ? (isAdmin ? 'ویرایش تسک' : 'جزئیات تسک') : 'تسک جدید';
+            document.getElementById('taskTitle').value = task?.title || '';
+            document.getElementById('taskDesc').value = task?.desc || '';
+            document.getElementById('taskStage').innerHTML = stages.map(stage => `<option value="${escapeHtml(stage.id)}">${escapeHtml(stage.name)}</option>`).join('');
+            document.getElementById('taskStage').value = task?.stageId || activeStageId || stages[0]?.id || '';
+            document.getElementById('taskPriority').value = task?.priority || 'متوسط';
+            document.getElementById('taskStatus').value = task?.status || 'انجام نشده';
+            populatePersonSelect('taskAssignee', task?.assigneeId);
+            populatePersonSelect('taskReviewer', task?.reviewerId);
+            populatePersonSelect('taskReceiver', task?.receiverId);
+            document.getElementById('taskDeadline').value = task?.deadline || '';
+            previewJalaliDate(task?.deadline || '');
+            currentExcludeTaskId = task?.id || null;
+            currentSelectedDeps = [...new Set(getTaskDeps(task).map(String))].filter(depId => tasks.some(item => String(item.id) === depId));
+            document.getElementById('depSearchInput').value = '';
+            closeDepDropdown();
+            document.getElementById('depAdminView').classList.toggle('hidden', !isAdmin);
+            document.getElementById('depGuestView').classList.toggle('hidden', isAdmin);
+            document.getElementById('saveTaskBtn').classList.toggle('hidden', !isAdmin);
+            document.getElementById('deleteTaskBtn').classList.toggle('hidden', !isAdmin || !task);
+            document.getElementById('cancelTaskBtn').textContent = isAdmin ? 'انصراف' : 'بستن';
+            document.querySelectorAll('#taskForm input:not([type=hidden]), #taskForm textarea, #taskForm select').forEach(field => { field.disabled = !isAdmin; });
+            renderDepPills(); renderDepOptions();
+            openModal('taskModal');
+            if (isAdmin) document.getElementById('taskTitle').focus();
+        }
+        function previewJalaliDate(value) {
+            const preview = document.getElementById('jalaliPreview');
+            const date = value ? new Date(value + 'T12:00:00') : null;
+            preview.textContent = date && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: 'long', day: 'numeric' }).format(date) : '';
+        }
+        function renderDepPills() {
+            const selected = currentSelectedDeps.map(id => tasks.find(task => String(task.id) === id)).filter(Boolean);
+            document.getElementById('depPillsContainer').innerHTML = selected.length ? selected.map(task => `<span class="inline-flex items-center gap-1 text-xs bg-indigo-50 dark:bg-slate-700 text-primary dark:text-indigo-300 px-2 py-1 rounded-md max-w-full"><span class="truncate">${escapeHtml(task.title)}</span><button type="button" data-id="${escapeHtml(task.id)}" onclick="event.stopPropagation(); toggleSelectedDep(this.dataset.id)" aria-label="حذف پیش‌نیاز" class="font-bold">×</button></span>`).join('') : '<span class="text-xs text-slate-400">انتخاب پیش‌نیاز...</span>';
+            document.getElementById('depGuestView').innerHTML = selected.length ? selected.map(task => `<span class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md">${escapeHtml(task.title)}</span>`).join('') : '<span class="text-xs text-slate-400">پیش‌نیازی ثبت نشده است.</span>';
+        }
+        function taskDependsOn(taskId, targetId, visited = new Set()) {
+            if (String(taskId) === String(targetId)) return true;
+            if (visited.has(String(taskId))) return false;
+            visited.add(String(taskId));
+            const task = tasks.find(item => String(item.id) === String(taskId));
+            return getTaskDeps(task).some(id => taskDependsOn(id, targetId, visited));
+        }
+        function renderDepOptions(query = '') {
+            const search = query.trim().toLocaleLowerCase();
+            const available = tasks.filter(task => String(task.id) !== String(currentExcludeTaskId) && task.title.toLocaleLowerCase().includes(search));
+            document.getElementById('depOptionsList').innerHTML = available.length ? available.map(task => {
+                const selected = currentSelectedDeps.includes(String(task.id));
+                const cyclic = currentExcludeTaskId && taskDependsOn(task.id, currentExcludeTaskId);
+                return `<button type="button" data-id="${escapeHtml(task.id)}" onclick="toggleSelectedDep(this.dataset.id)" ${cyclic ? 'disabled' : ''} class="w-full flex items-center gap-2 text-right text-xs px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"><span class="w-4 h-4 flex items-center justify-center rounded border border-slate-300 dark:border-slate-600">${selected ? '✓' : ''}</span><span class="truncate">${escapeHtml(task.title)}</span></button>`;
+            }).join('') : '<p class="text-xs text-slate-500 text-center py-3">تسک دیگری یافت نشد.</p>';
+        }
+        function toggleDepDropdown(event) {
+            if (!isAdmin) return;
+            event.stopPropagation();
+            const dropdown = document.getElementById('depDropdown');
+            if (!dropdown.classList.contains('hidden')) { closeDepDropdown(); return; }
+            renderDepOptions(document.getElementById('depSearchInput').value);
+            dropdown.classList.remove('hidden');
+            document.getElementById('depTrigger').setAttribute('aria-expanded', 'true');
+            positionDepDropdown();
+            document.getElementById('depSearchInput').focus();
+        }
+        function closeDepDropdown() {
+            document.getElementById('depDropdown').classList.add('hidden');
+            document.getElementById('depTrigger').setAttribute('aria-expanded', 'false');
+        }
+        function positionDepDropdown() {
+            const dropdown = document.getElementById('depDropdown');
+            if (dropdown.classList.contains('hidden')) return;
+            const trigger = document.getElementById('depTrigger');
+            const triggerRect = trigger.getBoundingClientRect();
+            const formRect = document.querySelector('#taskModal .custom-scrollbar').getBoundingClientRect();
+            if (triggerRect.bottom < formRect.top || triggerRect.top > formRect.bottom) { closeDepDropdown(); return; }
+            const gap = 6;
+            const roomBelow = window.innerHeight - triggerRect.bottom - gap - 8;
+            const roomAbove = triggerRect.top - gap - 8;
+            const openAbove = roomBelow < 180 && roomAbove > roomBelow;
+            const available = Math.max(64, openAbove ? roomAbove : roomBelow);
+            dropdown.style.maxHeight = Math.min(224, available) + 'px';
+            dropdown.style.width = Math.min(triggerRect.width, window.innerWidth - 16) + 'px';
+            dropdown.style.left = Math.max(8, Math.min(triggerRect.left, window.innerWidth - dropdown.offsetWidth - 8)) + 'px';
+            dropdown.style.top = (openAbove ? Math.max(8, triggerRect.top - gap - dropdown.offsetHeight) : Math.min(window.innerHeight - dropdown.offsetHeight - 8, triggerRect.bottom + gap)) + 'px';
+        }
+        function filterDeps(value) { renderDepOptions(value); positionDepDropdown(); }
+        function toggleSelectedDep(id) {
+            if (!isAdmin || (!currentSelectedDeps.includes(id) && currentExcludeTaskId && taskDependsOn(id, currentExcludeTaskId))) return;
+            currentSelectedDeps = currentSelectedDeps.includes(id) ? currentSelectedDeps.filter(item => item !== id) : [...currentSelectedDeps, id];
+            renderDepPills(); renderDepOptions(document.getElementById('depSearchInput').value);
+            positionDepDropdown();
+        }
+        async function handleTaskSubmit(event) {
+            event.preventDefault();
+            if (!isAdmin) return;
+            const id = document.getElementById('taskId').value;
+            const title = document.getElementById('taskTitle').value.trim();
+            const stageId = document.getElementById('taskStage').value;
+            if (!title || !stages.some(stage => String(stage.id) === stageId)) { showToast('عنوان و مرحله معتبر لازم است'); return; }
+            const existing = id ? tasks.find(task => String(task.id) === id) : null;
+            if (id && !existing) { showToast('تسک پیدا نشد'); return; }
+            const data = {
+                title, stageId, desc: document.getElementById('taskDesc').value.trim(),
+                priority: document.getElementById('taskPriority').value, status: document.getElementById('taskStatus').value,
+                assigneeId: document.getElementById('taskAssignee').value, reviewerId: document.getElementById('taskReviewer').value,
+                receiverId: document.getElementById('taskReceiver').value, deadline: document.getElementById('taskDeadline').value,
+                dependencies: [...currentSelectedDeps]
+            };
+            const task = { id: id || makeId(), order: existing?.order || tasks.filter(item => String(item.stageId) === stageId).length + 1, ...data };
+            const oldDeps = new Set(getTaskDeps(existing).map(String));
+            const newDeps = new Set(data.dependencies.map(String));
+            const completed = await runDbAction(async () => {
+                if (existing) await dbWrite(DB_TABLES.tasks, 'PATCH', dbFilter('id', id), taskToRow(task));
+                else {
+                    await dbWrite(DB_TABLES.tasks, 'POST', '', taskToRow(task));
+                    document.getElementById('taskId').value = task.id;
+                }
+                await dbUpsert(DB_TABLES.dependencies, [...newDeps].filter(depId => !oldDeps.has(depId)).map(depId => ({ task_id: task.id, depends_on_task_id: depId })));
+                for (const depId of oldDeps) if (!newDeps.has(depId)) {
+                    await dbWrite(DB_TABLES.dependencies, 'DELETE', dbFilter('task_id', task.id) + '&' + dbFilter('depends_on_task_id', depId));
+                }
+            }, 'تسک ذخیره شد');
+            if (completed) {
+                activeStageId = stageId; isSearchMode = false;
+                closeModals();
+                if (dataReady) { renderStagesTabs(); renderStageDescription(activeStageId); refreshCurrentView(); }
+            }
+        }
+        async function updateTaskStatus(id, status) {
+            if (!isAdmin) return;
+            const task = tasks.find(item => String(item.id) === id);
+            if (!task) return;
+            await runDbAction(() => dbWrite(DB_TABLES.tasks, 'PATCH', dbFilter('id', id), { status }));
+        }
+        function deleteTask(id, returnModal = null) {
+            if (!isAdmin || !tasks.some(item => String(item.id) === id)) return;
+            askDelete('این تسک حذف شود؟', returnModal, () => runDbAction(
+                () => dbWrite(DB_TABLES.tasks, 'DELETE', dbFilter('id', id)), 'تسک حذف شد'
+            ));
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
