@@ -102,7 +102,7 @@
 
     <!-- Navbar -->
     <nav class="glass-panel sticky top-0 z-40 shadow-sm">
-        <div class="max-w-[96%] mx-auto px-4">
+        <div class="max-w-[98%] mx-auto px-2 sm:px-3">
             <div class="flex justify-between h-16 items-center">
                 <!-- Brand -->
                 <div class="flex items-center gap-4 shrink-0">
@@ -162,11 +162,11 @@
         </div>
     </nav>
 
-    <main class="flex-grow w-full max-w-[96%] mx-auto py-8">
+    <main class="flex-grow w-full max-w-[98%] mx-auto py-4">
         <!-- Dashboard Metrics -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
             <!-- Overall Progress -->
-            <div class="lg:col-span-1 bg-white dark:bg-panelDark p-6 rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark flex flex-col justify-center relative overflow-hidden group">
+            <div class="lg:col-span-1 bg-white dark:bg-panelDark p-3 rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark flex flex-col justify-center relative overflow-hidden group">
                 <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all"></div>
                 <div class="flex justify-between items-start mb-4 relative z-10">
                     <h2 class="text-sm font-bold text-slate-500 dark:text-slate-400">پیشرفت کل پروژه</h2>
@@ -183,7 +183,7 @@
             </div>
 
             <!-- Stage Detail -->
-            <div id="stageDescriptionContainer" class="lg:col-span-3 bg-white dark:bg-panelDark p-6 rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark flex flex-col">
+            <div id="stageDescriptionContainer" class="lg:col-span-3 bg-white dark:bg-panelDark p-3 rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark flex flex-col">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-4">
                         <h3 id="currentStageTitleDisplay" class="text-lg font-black text-slate-900 dark:text-white">نام مرحله</h3>
@@ -198,7 +198,7 @@
         </div>
 
         <!-- Toolbar (Tabs & Actions) -->
-        <div id="tabsSection" class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-white dark:bg-panelDark p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-borderDark">
+        <div id="tabsSection" class="flex flex-col md:flex-row justify-between items-center gap-2 mb-3 bg-white dark:bg-panelDark p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-borderDark">
             <div id="stagesTabsContainer" class="flex space-x-1 space-x-reverse overflow-x-auto w-full md:w-auto p-1 hide-scrollbar">
                 <!-- Injected via JS -->
             </div>
@@ -214,7 +214,7 @@
             </div>
         </div>
 
-        <div id="dbStatus" class="mb-4 text-sm font-medium text-slate-600 dark:text-slate-300" role="status" aria-live="polite">در حال دریافت اطلاعات...</div>
+        <div id="dbStatus" class="mb-2 text-sm font-medium text-slate-600 dark:text-slate-300" role="status" aria-live="polite">در حال دریافت اطلاعات...</div>
 
         <!-- Table Container -->
         <div class="bg-white dark:bg-panelDark rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark overflow-hidden">
@@ -617,11 +617,17 @@
         function getPersonName(id) { return people.find(x => String(x.id) === String(id))?.name || ''; }
         function isOverdue(dateStr, status) { if (!dateStr || status === 'انجام شده') return false; const t = new Date(dateStr); t.setHours(0,0,0,0); const td = new Date(); td.setHours(0,0,0,0); return t <= td; }
 
+        function progressPercent(items) {
+            if (!items.length) return 0;
+            const points = items.reduce((sum, task) => sum + (task.status === 'انجام شده' ? 1 : task.status === 'در حال انجام' ? 0.5 : 0), 0);
+            return Math.round(points / items.length * 1000) / 10;
+        }
+
         function updateProgressBars() {
-            const total = tasks.length; const comp = tasks.filter(t => t.status === 'انجام شده').length; const perc = total === 0 ? 0 : Math.round((comp / total) * 100);
+            const total = tasks.length; const comp = tasks.filter(t => t.status === 'انجام شده').length; const perc = progressPercent(tasks);
             document.getElementById('overallProgressText').innerText = perc + '%'; document.getElementById('overallTaskCountText').innerText = `${comp} / ${total} تسک`; document.getElementById('overallProgressBar').style.width = perc + '%';
             if (activeStageId && !isSearchMode) {
-                const sTasks = tasks.filter(t => t.stageId === activeStageId); const sComp = sTasks.filter(t => t.status === 'انجام شده').length; const sPerc = sTasks.length === 0 ? 0 : Math.round((sComp / sTasks.length) * 100);
+                const sTasks = tasks.filter(t => t.stageId === activeStageId); const sPerc = progressPercent(sTasks);
                 document.getElementById('stageProgressText').innerText = sPerc + '%'; document.getElementById('stageProgressBar').style.width = sPerc + '%';
             }
         }
@@ -800,9 +806,32 @@
             }
         }
 
+        // At each step choose the earliest deadline among tasks whose prerequisites are ready.
+        function orderTasksByDependencies(items) {
+            const byId = new Map(items.map(task => [String(task.id), task]));
+            const pending = new Map(items.map(task => [String(task.id), new Set(getTaskDeps(task).map(String).filter(id => byId.has(id)))]));
+            const compare = (a, b) => {
+                const dueA = a.deadline || '9999-12-31';
+                const dueB = b.deadline || '9999-12-31';
+                return dueA.localeCompare(dueB) || (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.id).localeCompare(String(b.id));
+            };
+            const result = [];
+            while (pending.size) {
+                // The fallback keeps corrupted cyclic data visible in a stable order.
+                const ready = [...pending.keys()].filter(id => pending.get(id).size === 0);
+                const nextId = (ready.length ? ready : [...pending.keys()]).map(id => byId.get(id)).sort(compare)[0].id;
+                const key = String(nextId);
+                result.push(byId.get(key));
+                pending.delete(key);
+                pending.forEach(deps => deps.delete(key));
+            }
+            return result;
+        }
+
         function renderTasksTable(stageId, sResults = null) {
             const tbody = document.getElementById('tasksTableBody'); const empty = document.getElementById('emptyTasksState');
-            let dTasks = sResults !== null ? sResults : tasks.filter(t=>t.stageId===stageId).sort((a,b)=>(a.order||0)-(b.order||0));
+            const ordered = orderTasksByDependencies(tasks);
+            let dTasks = sResults !== null ? ordered.filter(task => sResults.some(result => String(result.id) === String(task.id))) : ordered.filter(t => t.stageId === stageId);
             tbody.innerHTML = '';
             
             if(dTasks.length === 0) { tbody.parentElement.classList.add('hidden'); empty.classList.remove('hidden'); empty.classList.add('flex'); return; }
@@ -811,9 +840,10 @@
             dTasks.forEach((t, i) => {
                 const isOver = isOverdue(t.deadline, t.status);
                 
-                // Minimalist People Pills
-                const renderPerson = (lbl, id) => id ? `<div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-md text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-borderDark" title="${lbl}"><div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>${escapeHtml(getPersonName(id))}</div>` : '';
-                const pStr = `<div class="flex flex-wrap gap-2">${renderPerson('مسئول', t.assigneeId)}${renderPerson('ناظر', t.reviewerId)}</div>`;
+                const renderPerson = (label, id, color) => id ? `<div class="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-md text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-borderDark"><span class="${color} whitespace-nowrap">${label}:</span><span>${escapeHtml(getPersonName(id) || 'نامشخص')}</span></div>` : '';
+                const pStr = `<div class="flex flex-wrap gap-1.5">${renderPerson('انجام‌دهنده', t.assigneeId, 'text-primary')}${renderPerson('تأییدکننده', t.reviewerId, 'text-success')}${renderPerson('تحویل‌گیرنده', t.receiverId, 'text-warning')}</div>`;
+                const deps = getTaskDeps(t).map(id => tasks.find(item => String(item.id) === String(id))).filter(Boolean);
+                const depsHtml = deps.length ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">پیش‌نیاز: ${deps.map(dep => escapeHtml(dep.title)).join('، ')}</div>` : '';
 
                 const stBadge = t.status==='انجام شده'?'bg-success/10 text-success border-success/20':t.status==='در حال انجام'?'bg-primary/10 text-primary border-primary/20':'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700';
                 const prBadge = t.priority==='بالا'?'text-danger':t.priority==='پایین'?'text-slate-400':'text-warning';
@@ -828,6 +858,7 @@
                         <td class="py-5 px-6 align-middle">
                             <div class="font-extrabold text-sm text-slate-800 dark:text-slate-100 mb-1">${escapeHtml(t.title)}</div>
                             ${t.desc?`<div class="text-xs text-slate-400 line-clamp-1">${escapeHtml(t.desc)}</div>`:''}
+                            ${depsHtml}
                         </td>
                         <td class="py-5 px-4 align-middle text-center"><span class="text-xs font-bold flex items-center justify-center gap-1 ${prBadge}"><div class="w-1.5 h-1.5 rounded-full currentColor bg-current"></div>${escapeHtml(t.priority)}</span></td>
                         <td class="py-5 px-6 align-middle">${pStr || '<span class="text-xs text-slate-400 font-medium">تخصیص نیافته</span>'}</td>
