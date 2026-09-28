@@ -860,17 +860,17 @@
 
                 tbody.innerHTML += `
                     <tr data-id="${escapeHtml(t.id)}" class="row-hover group cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors" onclick="openTaskModal(this.dataset.id)">
-                        <td class="py-2.5 px-3 align-middle text-center font-black text-slate-300 dark:text-slate-600">${i+1}</td>
-                        <td class="py-2.5 px-3 align-middle">
+                        <td class="py-3 px-3 align-middle text-center font-black text-slate-300 dark:text-slate-600">${i+1}</td>
+                        <td class="py-3 px-3 align-middle">
                             <div class="font-extrabold text-sm text-slate-800 dark:text-slate-100">${escapeHtml(t.title)}</div>
                             ${t.desc?`<div class="text-xs text-slate-400 line-clamp-1">${escapeHtml(t.desc)}</div>`:''}
                             ${depsHtml}
                         </td>
-                        <td class="py-2.5 px-3 align-middle text-center"><span class="text-xs font-bold flex items-center justify-center gap-1 ${prBadge}"><div class="w-1.5 h-1.5 rounded-full currentColor bg-current"></div>${escapeHtml(t.priority)}</span></td>
-                        <td class="py-2.5 px-3 align-middle">${pStr || '<span class="text-xs text-slate-400 font-medium">تخصیص نیافته</span>'}</td>
-                        <td class="py-2.5 px-3 align-middle text-xs font-bold ${isOver?'text-danger':'text-slate-500'}" dir="ltr">${escapeHtml(t.deadline || '-')}</td>
-                        <td class="py-2.5 px-3 align-middle" onclick="event.stopPropagation();">${stHtml}</td>
-                        <td class="py-2.5 px-3 align-middle text-center admin-only ${isAdmin ? '' : 'hidden-by-auth'}">
+                        <td class="py-3 px-3 align-middle text-center"><span class="text-xs font-bold flex items-center justify-center gap-1 ${prBadge}"><div class="w-1.5 h-1.5 rounded-full currentColor bg-current"></div>${escapeHtml(t.priority)}</span></td>
+                        <td class="py-3 px-3 align-middle">${pStr || '<span class="text-xs text-slate-400 font-medium">تخصیص نیافته</span>'}</td>
+                        <td class="py-3 px-3 align-middle text-xs font-bold ${isOver?'text-danger':'text-slate-500'}" dir="ltr">${escapeHtml(t.deadline || '-')}</td>
+                        <td class="py-3 px-3 align-middle" onclick="event.stopPropagation();">${stHtml}</td>
+                        <td class="py-3 px-3 align-middle text-center admin-only ${isAdmin ? '' : 'hidden-by-auth'}">
                             <div class="action-btns flex justify-center gap-2">
                                 <button type="button" data-id="${escapeHtml(t.id)}" onclick="event.stopPropagation(); deleteTask(this.dataset.id)" aria-label="حذف تسک" title="حذف تسک" class="text-slate-500 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                             </div>
