@@ -61,6 +61,12 @@
         
         .status-badge { transition: all 0.2s ease; }
         .action-btns { transition: all 0.2s ease; }
+        .task-table-scroll { max-height: min(70vh, 760px); overflow: auto; overscroll-behavior: contain; }
+        .task-table { border-collapse: separate; border-spacing: 0; }
+        .task-table thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: inset 0 -1px #e2e8f0; }
+        .dark .task-table thead th { background: #263449; box-shadow: inset 0 -1px #475569; }
+        .task-table tbody tr + tr td { border-top: 1px solid #f1f5f9; }
+        .dark .task-table tbody tr + tr td { border-top-color: #334155; }
         
         /* Modal inputs: these styles must work in the standalone browser file. */
         .input-modern {
@@ -218,20 +224,20 @@
 
         <!-- Table Container -->
         <div class="bg-white dark:bg-panelDark rounded-3xl shadow-soft border border-slate-100 dark:border-borderDark overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-right border-collapse min-w-[1100px]">
+            <div class="task-table-scroll" aria-label="فهرست تسک‌ها">
+                <table class="task-table w-full text-right min-w-[1100px]">
                     <thead class="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-black border-b border-slate-100 dark:border-borderDark">
                         <tr>
-                            <th class="py-5 px-6 w-16 text-center rounded-tr-3xl">#</th>
-                            <th class="py-5 px-6 w-auto">مشخصات تسک</th>
-                            <th class="py-5 px-4 w-32 text-center">اولویت</th>
-                            <th class="py-5 px-6 w-[250px]">تیم اجرایی</th>
-                            <th class="py-5 px-6 w-40">ددلاین</th>
-                            <th class="py-5 px-6 w-48">وضعیت</th>
-                            <th class="py-5 px-4 w-24 text-center rounded-tl-3xl admin-only hidden-by-auth">عملیات</th>
+                            <th class="py-2.5 px-3 w-12 text-center rounded-tr-3xl">#</th>
+                            <th class="py-2.5 px-3 w-auto">مشخصات تسک</th>
+                            <th class="py-2.5 px-3 w-24 text-center">اولویت</th>
+                            <th class="py-2.5 px-3 w-[250px]">تیم اجرایی</th>
+                            <th class="py-2.5 px-3 w-32">ددلاین</th>
+                            <th class="py-2.5 px-3 w-40">وضعیت</th>
+                            <th class="py-2.5 px-3 w-16 text-center rounded-tl-3xl admin-only hidden-by-auth">عملیات</th>
                         </tr>
                     </thead>
-                    <tbody id="tasksTableBody" class="divide-y divide-slate-50 dark:divide-slate-800/50 text-sm font-medium">
+                    <tbody id="tasksTableBody" class="text-sm font-medium">
                         <!-- JS renders here -->
                     </tbody>
                 </table>
@@ -840,33 +846,33 @@
             dTasks.forEach((t, i) => {
                 const isOver = isOverdue(t.deadline, t.status);
                 
-                const renderPerson = (label, id, color) => id ? `<div class="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-md text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-borderDark"><span class="${color} whitespace-nowrap">${label}:</span><span>${escapeHtml(getPersonName(id) || 'نامشخص')}</span></div>` : '';
-                const pStr = `<div class="flex flex-wrap gap-1.5">${renderPerson('انجام‌دهنده', t.assigneeId, 'text-primary')}${renderPerson('تأییدکننده', t.reviewerId, 'text-success')}${renderPerson('تحویل‌گیرنده', t.receiverId, 'text-warning')}</div>`;
+                const renderPerson = (label, id, color) => id ? `<span class="inline-flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 px-1 rounded text-[10px] leading-4 font-bold text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-borderDark"><span class="${color} whitespace-nowrap">${label}:</span><span>${escapeHtml(getPersonName(id) || 'نامشخص')}</span></span>` : '';
+                const pStr = `<div class="flex flex-wrap gap-0.5">${renderPerson('انجام‌دهنده', t.assigneeId, 'text-primary')}${renderPerson('تأییدکننده', t.reviewerId, 'text-success')}${renderPerson('تحویل‌گیرنده', t.receiverId, 'text-warning')}</div>`;
                 const deps = getTaskDeps(t).map(id => tasks.find(item => String(item.id) === String(id))).filter(Boolean);
-                const depsHtml = deps.length ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">پیش‌نیاز: ${deps.map(dep => escapeHtml(dep.title)).join('، ')}</div>` : '';
+                const depsHtml = deps.length ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">پیش‌نیاز: ${deps.map(dep => escapeHtml(dep.title)).join('، ')}</div>` : '';
 
                 const stBadge = t.status==='انجام شده'?'bg-success/10 text-success border-success/20':t.status==='در حال انجام'?'bg-primary/10 text-primary border-primary/20':'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700';
                 const prBadge = t.priority==='بالا'?'text-danger':t.priority==='پایین'?'text-slate-400':'text-warning';
 
                 let stHtml = isAdmin 
-                    ? `<select data-id="${escapeHtml(t.id)}" onchange="updateTaskStatus(this.dataset.id, this.value)" class="text-xs font-bold rounded-lg px-3 py-1.5 w-full outline-none border transition-all cursor-pointer ${stBadge}"><option ${t.status==='انجام نشده'?'selected':''}>انجام نشده</option><option ${t.status==='در حال انجام'?'selected':''}>در حال انجام</option><option ${t.status==='انجام شده'?'selected':''}>انجام شده</option></select>`
-                    : `<span class="text-xs font-bold border rounded-lg px-3 py-1.5 block text-center ${stBadge}">${t.status}</span>`;
+                    ? `<select data-id="${escapeHtml(t.id)}" onchange="updateTaskStatus(this.dataset.id, this.value)" class="text-xs font-bold rounded-lg px-2 py-1 w-full outline-none border transition-all cursor-pointer ${stBadge}"><option ${t.status==='انجام نشده'?'selected':''}>انجام نشده</option><option ${t.status==='در حال انجام'?'selected':''}>در حال انجام</option><option ${t.status==='انجام شده'?'selected':''}>انجام شده</option></select>`
+                    : `<span class="text-xs font-bold border rounded-lg px-2 py-1 block text-center ${stBadge}">${t.status}</span>`;
 
                 tbody.innerHTML += `
                     <tr data-id="${escapeHtml(t.id)}" class="row-hover group cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors" onclick="openTaskModal(this.dataset.id)">
-                        <td class="py-5 px-6 align-middle text-center font-black text-slate-300 dark:text-slate-600">${i+1}</td>
-                        <td class="py-5 px-6 align-middle">
-                            <div class="font-extrabold text-sm text-slate-800 dark:text-slate-100 mb-1">${escapeHtml(t.title)}</div>
+                        <td class="py-2 px-3 align-middle text-center font-black text-slate-300 dark:text-slate-600">${i+1}</td>
+                        <td class="py-2 px-3 align-middle">
+                            <div class="font-extrabold text-sm text-slate-800 dark:text-slate-100">${escapeHtml(t.title)}</div>
                             ${t.desc?`<div class="text-xs text-slate-400 line-clamp-1">${escapeHtml(t.desc)}</div>`:''}
                             ${depsHtml}
                         </td>
-                        <td class="py-5 px-4 align-middle text-center"><span class="text-xs font-bold flex items-center justify-center gap-1 ${prBadge}"><div class="w-1.5 h-1.5 rounded-full currentColor bg-current"></div>${escapeHtml(t.priority)}</span></td>
-                        <td class="py-5 px-6 align-middle">${pStr || '<span class="text-xs text-slate-400 font-medium">تخصیص نیافته</span>'}</td>
-                        <td class="py-5 px-6 align-middle text-xs font-bold ${isOver?'text-danger':'text-slate-500'}" dir="ltr">${escapeHtml(t.deadline || '-')}</td>
-                        <td class="py-5 px-6 align-middle" onclick="event.stopPropagation();">${stHtml}</td>
-                        <td class="py-5 px-4 align-middle text-center admin-only ${isAdmin ? '' : 'hidden-by-auth'}">
+                        <td class="py-2 px-3 align-middle text-center"><span class="text-xs font-bold flex items-center justify-center gap-1 ${prBadge}"><div class="w-1.5 h-1.5 rounded-full currentColor bg-current"></div>${escapeHtml(t.priority)}</span></td>
+                        <td class="py-2 px-3 align-middle">${pStr || '<span class="text-xs text-slate-400 font-medium">تخصیص نیافته</span>'}</td>
+                        <td class="py-2 px-3 align-middle text-xs font-bold ${isOver?'text-danger':'text-slate-500'}" dir="ltr">${escapeHtml(t.deadline || '-')}</td>
+                        <td class="py-2 px-3 align-middle" onclick="event.stopPropagation();">${stHtml}</td>
+                        <td class="py-2 px-3 align-middle text-center admin-only ${isAdmin ? '' : 'hidden-by-auth'}">
                             <div class="action-btns flex justify-center gap-2">
-                                <button type="button" data-id="${escapeHtml(t.id)}" onclick="event.stopPropagation(); deleteTask(this.dataset.id)" aria-label="حذف تسک" title="حذف تسک" class="text-slate-500 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                <button type="button" data-id="${escapeHtml(t.id)}" onclick="event.stopPropagation(); deleteTask(this.dataset.id)" aria-label="حذف تسک" title="حذف تسک" class="text-slate-500 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                             </div>
                         </td>
                     </tr>
